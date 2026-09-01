@@ -1,0 +1,1802 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Amaliyah Harian — SMP Tahfizhpreneur Cahaya Qur'an</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F2F0E4; --surface:#FFFFFF; --surface-alt:#EAE6D6;
+    --ink:#20291F; --ink-soft:#5B6357; --line:#DCD5BE;
+    --teal:#2F6F5E; --teal-dark:#1B4438; --teal-soft:#E4EEE9;
+    --gold:#B98C1F; --gold-soft:#F5E9CC;
+    --red:#A8433A; --red-soft:#F3E1DE;
+    --radius-s:10px; --radius-m:16px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,.display{font-family:'Fraunces',serif;font-weight:600;letter-spacing:-0.01em;}
+  #app{min-height:100vh;display:flex;flex-direction:column;}
+  .wrap{max-width:520px;margin:0 auto;width:100%;padding:20px 18px 90px;}
+  .wrap.wide{max-width:920px;}
+  .topbar{background:var(--teal-dark);color:#F2F0E4;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .topbar .brand{display:flex;flex-direction:column;line-height:1.2;min-width:0;}
+  .topbar .brand .kicker{font-size:11.5px;color:#BFD6CC;}
+  .topbar .brand .title{font-family:'Fraunces',serif;font-size:16.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .topbar button{background:transparent;border:1px solid rgba(242,240,228,0.35);color:#F2F0E4;padding:7px 13px;border-radius:100px;font-size:13px;font-family:inherit;cursor:pointer;flex-shrink:0;}
+  .topbar button:hover{background:rgba(242,240,228,0.12);}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-m);padding:18px;margin-bottom:14px;}
+  .muted{color:var(--ink-soft);font-size:13.5px;}
+  .row{display:flex;align-items:center;gap:10px;}
+  .between{justify-content:space-between;}
+  .btn{appearance:none;border:none;border-radius:100px;padding:11px 18px;font-family:'Inter',sans-serif;font-weight:600;font-size:14.5px;cursor:pointer;}
+  .btn-primary{background:var(--teal);color:#fff;}
+  .btn-primary:hover{background:var(--teal-dark);}
+  .btn-ghost{background:transparent;color:var(--teal-dark);border:1px solid var(--line);}
+  .btn-ghost:hover{background:var(--surface-alt);}
+  .btn-block{width:100%;}
+  .btn-sm{padding:7px 13px;font-size:13px;}
+  input[type=text],input[type=password],input[type=month],input[type=date],select,textarea{
+    width:100%;padding:11px 13px;border-radius:var(--radius-s);border:1px solid var(--line);background:#fff;
+    font-family:'Inter',sans-serif;font-size:14.5px;color:var(--ink);
+  }
+  textarea{resize:vertical;font-family:inherit;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px;}
+  label{font-size:12.5px;color:var(--ink-soft);font-weight:600;display:block;margin-bottom:5px;}
+  .field{margin-bottom:12px;}
+  .pw-wrap{position:relative;}
+  .pw-wrap input{padding-right:44px;}
+  .saran-item{padding:12px 0;border-bottom:1px solid var(--line);}
+  .saran-item:last-child{border-bottom:none;}
+  .saran-item.unread{background:var(--teal-soft);margin:0 -16px;padding:12px 16px;border-radius:var(--radius-s);border-bottom:none;}
+  .saran-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+  .saran-name{font-weight:600;font-size:14.5px;}
+  .saran-msg{margin:8px 0 0;font-size:14px;line-height:1.55;color:var(--ink);white-space:pre-wrap;}
+  .dot-unread{width:9px;height:9px;border-radius:50%;background:var(--teal-dark);flex-shrink:0;margin-top:4px;}
+  .pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;font-size:15px;color:var(--ink-soft);padding:6px 8px;}
+  .check-row{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-soft);margin:2px 0 16px;cursor:pointer;user-select:none;}
+  .check-row input{width:16px;height:16px;accent-color:var(--teal);}
+
+  .login-hero{padding:44px 0 22px;text-align:center;}
+  .login-hero .school{font-size:12.5px;color:var(--ink-soft);letter-spacing:0.02em;margin-bottom:4px;}
+  .login-hero .display{font-size:26px;margin:0 0 6px;}
+
+  .sidebar-overlay{position:fixed;inset:0;background:rgba(15,20,15,0.45);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:55;}
+  .sidebar-overlay.show{opacity:1;pointer-events:auto;}
+  .sidebar{position:fixed;top:0;left:-270px;width:250px;max-width:80vw;height:100vh;background:var(--surface);border-right:1px solid var(--line);z-index:60;transition:left .25s ease;display:flex;flex-direction:column;padding:18px 0;overflow-y:auto;}
+  .sidebar.open{left:0;}
+  .sidebar-header{padding:0 18px 14px;font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--teal-dark);border-bottom:1px solid var(--line);margin-bottom:8px;}
+  .sidebar-item{display:block;width:100%;text-align:left;background:transparent;border:none;padding:13px 18px;font-family:'Inter',sans-serif;font-size:14.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;}
+  .sidebar-item:hover{background:var(--surface-alt);}
+  .sidebar-item.active{background:var(--teal-soft);color:var(--teal-dark);}
+
+  .srow{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .srow:last-child{border-bottom:none;}
+  .srow.clickable{cursor:pointer;}
+  .rank-badge{width:26px;height:26px;border-radius:50%;background:var(--surface-alt);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--ink-soft);flex-shrink:0;}
+  .rank-badge.gold{background:var(--gold-soft);color:var(--gold);}
+  .sname{flex:1;font-size:14.5px;font-weight:500;}
+  .sprog{width:64px;height:6px;border-radius:3px;background:var(--surface-alt);overflow:hidden;flex-shrink:0;}
+  .sprog > div{height:100%;background:var(--teal);}
+  .sfrac{font-size:12.5px;color:var(--ink-soft);width:34px;text-align:right;flex-shrink:0;}
+
+  .section-title{font-size:12.5px;font-weight:700;color:var(--ink-soft);margin:22px 0 8px;}
+  .section-title:first-child{margin-top:0;}
+
+  .honesty-banner{background:var(--gold-soft);border:1px solid #E3CE8C;border-radius:var(--radius-m);padding:14px 16px;margin-bottom:14px;display:flex;gap:12px;align-items:flex-start;}
+  .honesty-banner .ic{font-size:20px;flex-shrink:0;line-height:1;margin-top:1px;}
+  .honesty-banner .txt{font-size:13.5px;color:#6b4f0f;line-height:1.45;}
+  .honesty-banner .txt b{display:block;font-size:14px;margin-bottom:2px;color:#5c4409;}
+  .streak-badge{background:var(--teal-soft);color:var(--teal-dark);border:1px solid var(--teal);border-radius:100px;padding:8px 16px;font-size:13.5px;font-weight:700;display:inline-flex;align-items:center;gap:6px;margin-bottom:14px;}
+  .teladan-banner{background:var(--gold-soft);border:1px solid #E3CE8C;border-radius:var(--radius-m);padding:14px 16px;margin-bottom:14px;font-size:13.5px;color:#5c4409;line-height:1.5;}
+  .period-chip{padding:7px 14px;border-radius:100px;font-size:13px;font-weight:600;background:transparent;border:1px solid var(--line);color:var(--ink-soft);cursor:pointer;}
+  .period-chip.active{background:var(--teal-dark);color:#fff;border-color:var(--teal-dark);}
+  .cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
+  .cal-dow-row div{font-size:11px;font-weight:600;color:var(--ink-soft);text-align:center;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .cal-cell{aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;}
+  .cal-cell.full{background:var(--teal);color:#fff;}
+  .cal-cell.partial{background:var(--gold-soft);color:#6b4f0f;border:1px solid var(--gold);}
+  .cal-cell.none{background:var(--red-soft);color:var(--red);}
+  .cal-cell.future{background:var(--surface-alt);color:var(--ink-soft);opacity:.45;}
+  .cal-legend{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);}
+  .cal-legend i{width:12px;height:12px;border-radius:4px;display:inline-block;font-style:normal;}
+  .cal-legend i.full{background:var(--teal);}
+  .cal-legend i.partial{background:var(--gold-soft);border:1px solid var(--gold);}
+  .cal-legend i.none{background:var(--red-soft);border:1px solid var(--red);}
+
+  .task-item{display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid var(--line);}
+  .task-item:last-child{border-bottom:none;}
+  .chk{width:24px;height:24px;border-radius:7px;border:2px solid var(--line);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s ease;background:#fff;}
+  .chk.done{background:var(--teal);border-color:var(--teal);}
+  .chk.done::after{content:"✓";color:#fff;font-size:14px;font-weight:700;}
+  .task-label{flex:1;font-size:15px;}
+  .task-label.done{color:var(--ink-soft);text-decoration:line-through;}
+  .task-time{font-size:12px;color:var(--ink-soft);flex-shrink:0;}
+  .cam-btn{position:relative;flex-shrink:0;width:30px;height:30px;border-radius:8px;background:var(--surface-alt);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;}
+  .cam-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
+  .photo-link{flex-shrink:0;font-size:12px;color:var(--teal-dark);font-weight:600;text-decoration:none;}
+  .photo-link:hover{text-decoration:underline;}
+
+  .pill{display:inline-block;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:600;}
+  .pill.teal{background:var(--teal-soft);color:var(--teal-dark);}
+
+  .empty{text-align:center;padding:26px 10px;color:var(--ink-soft);font-size:14px;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--teal-dark);color:#fff;padding:10px 20px;border-radius:100px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:50;}
+  .toast.show{opacity:1;}
+
+  .inline-add{display:flex;gap:8px;margin-bottom:14px;}
+  .inline-add input{flex:1;}
+  .list-edit-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);}
+  .list-edit-row:last-child{border-bottom:none;}
+  .list-edit-row .nm{flex:1;font-size:14.5px;}
+  .icon-btn{background:transparent;border:none;cursor:pointer;font-size:15px;color:var(--ink-soft);padding:4px 6px;flex-shrink:0;}
+  .icon-btn:hover{color:var(--red);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;font-size:11.5px;color:var(--ink-soft);font-weight:700;padding:8px 6px;border-bottom:1px solid var(--line);}
+  td{padding:9px 6px;border-bottom:1px solid var(--line);}
+  .detail-panel{background:var(--surface-alt);border-radius:var(--radius-s);padding:10px 14px;margin:-4px 0 10px;}
+  .detail-row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;color:var(--ink-soft);}
+  .detail-row b{color:var(--ink);font-weight:500;}
+  .cred-block{margin-bottom:18px;}
+  .cred-block h3{margin:0 0 10px;font-size:14.5px;}
+  .grade-card{text-align:center;}
+  .grade-letter{font-family:'Fraunces',serif;font-size:56px;font-weight:700;color:var(--teal-dark);line-height:1;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+const SCHOOL_NAME = "SMP Tahfizhpreneur Cahaya Qur'an";
+
+/* ---------------- Firebase ---------------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyDiwK8w0eudyNfS8WEfMcgqqWTU80CmYr0",
+  authDomain: "amaliyahharian.firebaseapp.com",
+  databaseURL: "https://amaliyahharian-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "amaliyahharian",
+  storageBucket: "amaliyahharian.firebasestorage.app",
+  messagingSenderId: "837791203929",
+  appId: "1:837791203929:web:43da34709b34393e936748"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+function fbKey(key){ return String(key).replace(/[.#$\[\]]/g,'_'); }
+
+/* ---------------- Storage layer ---------------- */
+// Data bersama (shared=true, default) disimpan di Firebase Realtime Database
+// supaya admin/orang tua/santri melihat data yang sama dan sinkron antar device.
+// Data privat per-device (shared=false, mis. "ingat login") disimpan di localStorage.
+async function storeGet(key, shared=true){
+  if(!shared){
+    try{
+      const raw = localStorage.getItem('p:'+key);
+      return raw===null ? null : JSON.parse(raw);
+    }catch(e){ return null; }
+  }
+  try{
+    const snap = await get(ref(db, 'amaliyah/'+fbKey(key)));
+    return snap.exists() ? snap.val() : null;
+  }catch(e){
+    console.error('storeGet error', key, e);
+    return null;
+  }
+}
+async function storeSet(key, value, shared=true){
+  if(!shared){
+    try{ localStorage.setItem('p:'+key, JSON.stringify(value)); return true; }
+    catch(e){ return false; }
+  }
+  try{
+    await set(ref(db, 'amaliyah/'+fbKey(key)), value);
+    return true;
+  }catch(e){
+    console.error('storeSet error', key, e);
+    return false;
+  }
+}
+
+/* ---------------- Seed data ---------------- */
+const SEED_BANIN = [
+  "Abdillah Ammar Al Fauzan","Ahmad Wildan Rasyid","Aqila Hamdan Al Fathan","Aqila Hamdan Al Fatih",
+  "Azlan Arkenzie Adiatmaja","Chairul Azzam Wijaya","Muhammad Emran Alafasy","Muhammad Zahwan Jubaidi",
+  "Raffaza Syaqif Pratama","Rashka Uno Kamil","Rayyan Iqra Mahmudy","Tsaqif Alfaruq Solichin","Albiezzam Hilman Wijaya"
+];
+const SEED_BANAT = [
+  "Abidah Fidziaritza","Aisyah Rahma Karenina","Alya Askana Sakhi","Annisa Gwen Inara","Arindi Nada Arcobaleno",
+  "Athiya Ufairah","Filza Noor Hanifa","Filza Salsabila Fadhilah","Haura Nafisah","Jalilla Dhessafa Alfariji",
+  "Maryam Zahida Aristi","Nasywa Almeera Khanza","Quisha Zahidah Rafifa","Raihana Yasmina Rahman","Raihanah Hanin",
+  "Raihanna Navy Khafiya","Rayna Shafiqa Almahyra","Rayya Viro Azzahra","Shafina Lucky Adeeba","Shafiyyah",
+  "Shafiyyah Najib","Shaqeena Taqiyyah Siregar","Siti Mutiah Ratu Setiawan"
+];
+const SEED_TASK_NAMES = [
+  "Bangun sebelum Subuh","Shalat Tahajud","Shalat Subuh berjamaah","Tilawah Al-Qur'an",
+  "Shalat 5 waktu tepat waktu","Membantu pekerjaan rumah","Belajar / mengulang pelajaran"
+];
+const DEFAULT_CREDENTIALS = {
+  admin:{ id:"admin", password:"admin123" },
+  banin:{ id:"banin", password:"banin123" },
+  banat:{ id:"banat", password:"banat123" }
+};
+
+function uid(prefix){ return prefix + Math.random().toString(36).slice(2,8); }
+function seedTasksBoth(){
+  const out = [];
+  ['banin','banat'].forEach(g=> SEED_TASK_NAMES.forEach(n=> out.push({id:uid('t'), name:n, group:g})));
+  return out;
+}
+
+/* ---------------- App state ---------------- */
+let state = {
+  screen:'loading',
+  role:null,
+  loginError:'',
+  students:[],
+  tasks:[],
+  credentials:{...DEFAULT_CREDENTIALS},
+  adminTab:'today',
+  expandedStudent:null,
+  editingTaskId:null,
+  selectedChildId:null,
+  parentTab:'peringkat',
+  todayChecklist:{},
+  monthYear:null,
+  monthlyResult:null,
+  profileMonth:null,
+  profileResult:null,
+  settingsMsg:'',
+  saranList:[],
+  saranFilter:'all',
+  appScriptUrl:''
+};
+let pollTimer = null;
+
+function pad(n){ return n.toString().padStart(2,'0'); }
+function todayKey(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function currentYm(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}`; }
+function checklistKey(dateKey){ return `checklist-${dateKey}`; }
+function fmtDateLong(){ return new Date().toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'}); }
+function fmtTime(iso){ return new Date(iso).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}); }
+function fmtDateTime(iso){ return new Date(iso).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(showToast._tm);
+  showToast._tm = setTimeout(()=>t.classList.remove('show'),1800);
+}
+function gradeLetter(pct){ if(pct>=90) return 'A'; if(pct>=75) return 'B'; if(pct>=60) return 'C'; return 'D'; }
+function gradeDesc(letter){
+  if(letter==='A') return 'Sangat Rajin';
+  if(letter==='B') return 'Rajin';
+  if(letter==='C') return 'Cukup';
+  return 'Perlu Ditingkatkan';
+}
+
+/* ---------------- Laporan WA ---------------- */
+const MONTH_NAMES_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+function monthLabelId(ym){
+  const [y,m] = ym.split('-').map(Number);
+  return `${MONTH_NAMES_ID[m-1]} ${y}`;
+}
+async function copyToClipboard(text){
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  }catch(e){}
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  }catch(e){ return false; }
+}
+function waGreeting(){ return "Assalamu'alaikum warahmatullahi wabarakatuh,"; }
+function waClosing(){ return "Semoga catatan ini menjadi motivasi bagi ananda untuk terus istiqomah dalam amaliyah hariannya. Jazakumullahu khairan atas kerja sama dan dukungan Ayah/Bunda.\n\nWassalamu'alaikum warahmatullahi wabarakatuh."; }
+function buildAdminWaReport(rows, ym){
+  const label = monthLabelId(ym);
+  const banin = rows.filter(r=>r.group==='banin');
+  const banat = rows.filter(r=>r.group==='banat');
+  const fmtRow = (r,i)=>{
+    const letter = gradeLetter(r.pct);
+    return `${i+1}. ${r.name} — ${r.doneSum}/${r.maxPossible} amaliyah (${r.pct}%) — Nilai ${letter} (${gradeDesc(letter)})`;
+  };
+  const lines = [];
+  lines.push('LAPORAN PERKEMBANGAN AMALIYAH HARIAN SANTRI');
+  lines.push(SCHOOL_NAME);
+  lines.push(`Bulan: ${label}`);
+  lines.push('');
+  lines.push(waGreeting());
+  lines.push('');
+  lines.push(`Berikut kami sampaikan laporan perkembangan amaliyah harian santri selama bulan ${label}:`);
+  lines.push('');
+  const baninTop = banin.find(r=>r.pct>0);
+  const banatTop = banat.find(r=>r.pct>0);
+  if(baninTop || banatTop){
+    lines.push('🌟 Santri Teladan:');
+    if(baninTop) lines.push(`   Banin — ${baninTop.name} (${baninTop.pct}%)`);
+    if(banatTop) lines.push(`   Banat — ${banatTop.name} (${banatTop.pct}%)`);
+    lines.push('');
+  }
+  if(banin.length){
+    lines.push('BANIN');
+    banin.forEach((r,i)=> lines.push(fmtRow(r,i)));
+    lines.push('');
+  }
+  if(banat.length){
+    lines.push('BANAT');
+    banat.forEach((r,i)=> lines.push(fmtRow(r,i)));
+    lines.push('');
+  }
+  lines.push(waClosing());
+  return lines.join('\n');
+}
+function buildAdminWeeklyWaReport(rows, mondayIso){
+  const label = weekRangeLabel(mondayIso);
+  const banin = rows.filter(r=>r.group==='banin');
+  const banat = rows.filter(r=>r.group==='banat');
+  const fmtRow = (r,i)=>{
+    const letter = gradeLetter(r.pct);
+    return `${i+1}. ${r.name} — ${r.doneSum}/${r.maxPossible} amaliyah (${r.pct}%) — Nilai ${letter} (${gradeDesc(letter)})`;
+  };
+  const lines = [];
+  lines.push('LAPORAN PERKEMBANGAN AMALIYAH HARIAN SANTRI');
+  lines.push(SCHOOL_NAME);
+  lines.push(`Minggu: ${label}`);
+  lines.push('');
+  lines.push(waGreeting());
+  lines.push('');
+  lines.push(`Berikut kami sampaikan laporan perkembangan amaliyah harian santri selama minggu ${label}:`);
+  lines.push('');
+  const baninTop = banin.find(r=>r.pct>0);
+  const banatTop = banat.find(r=>r.pct>0);
+  if(baninTop || banatTop){
+    lines.push('🌟 Santri Teladan:');
+    if(baninTop) lines.push(`   Banin — ${baninTop.name} (${baninTop.pct}%)`);
+    if(banatTop) lines.push(`   Banat — ${banatTop.name} (${banatTop.pct}%)`);
+    lines.push('');
+  }
+  if(banin.length){
+    lines.push('BANIN');
+    banin.forEach((r,i)=> lines.push(fmtRow(r,i)));
+    lines.push('');
+  }
+  if(banat.length){
+    lines.push('BANAT');
+    banat.forEach((r,i)=> lines.push(fmtRow(r,i)));
+    lines.push('');
+  }
+  lines.push(waClosing());
+  return lines.join('\n');
+}
+function buildStudentWaReport(student, row, period, periodValue){
+  const label = period==='mingguan' ? weekRangeLabel(periodValue) : monthLabelId(periodValue);
+  const periodWord = period==='mingguan' ? 'minggu' : 'bulan';
+  const lines = [];
+  lines.push('LAPORAN PERKEMBANGAN AMALIYAH HARIAN SANTRI');
+  lines.push(SCHOOL_NAME);
+  lines.push(`${period==='mingguan'?'Minggu':'Bulan'}: ${label}`);
+  lines.push('');
+  lines.push(waGreeting());
+  lines.push('');
+  if(row){
+    const letter = gradeLetter(row.pct);
+    lines.push(`Ananda ${student.name} telah menyelesaikan ${row.doneSum}/${row.maxPossible} amaliyah harian selama ${periodWord} ${label} (${row.pct}%), dengan predikat ${letter} (${gradeDesc(letter)}).`);
+  } else {
+    lines.push(`Belum ada data amaliyah untuk ananda ${student.name} pada ${periodWord} ${label}.`);
+  }
+  lines.push('');
+  lines.push(waClosing());
+  return lines.join('\n');
+}
+
+function classAnalytics(rows, group){
+  const list = rows.filter(r=>r.group===group);
+  const n = list.length;
+  const avgPct = n ? Math.round(list.reduce((a,r)=>a+r.pct,0)/n*10)/10 : 0;
+  const active = list.filter(r=>r.doneSum>0).length;
+  const top = list.length && list[0].pct>0 ? list[0] : null;
+  return { group, n, avgPct, active, letter: gradeLetter(avgPct), top };
+}
+
+/* ---------------- Init / seed / migration ---------------- */
+async function initApp(){
+  let students = await storeGet('students');
+  if(!students){
+    students = [
+      ...SEED_BANIN.map(n=>({id:uid('b'),name:n,group:'banin'})),
+      ...SEED_BANAT.map(n=>({id:uid('g'),name:n,group:'banat'}))
+    ];
+    await storeSet('students', students);
+  }
+  let tasks = await storeGet('tasks');
+  if(!tasks){
+    tasks = seedTasksBoth();
+    await storeSet('tasks', tasks);
+  } else if(tasks.some(t=>!t.group)){
+    const migrated = [];
+    tasks.forEach(t=>{
+      migrated.push({id:uid('t'), name:t.name, group:'banin'});
+      migrated.push({id:uid('t'), name:t.name, group:'banat'});
+    });
+    tasks = migrated;
+    await storeSet('tasks', tasks);
+  }
+  let credentials = await storeGet('credentials');
+  if(!credentials){
+    credentials = JSON.parse(JSON.stringify(DEFAULT_CREDENTIALS));
+    await storeSet('credentials', credentials);
+  }
+  let saranList = await storeGet('saran');
+  if(!saranList) saranList = [];
+  let appScriptUrl = await storeGet('appscript-url');
+  state.students = students;
+  state.tasks = tasks;
+  state.credentials = credentials;
+  state.saranList = saranList;
+  state.appScriptUrl = appScriptUrl || '';
+
+  const remembered = await storeGet('remembered-role', false);
+  if(remembered && credentials[remembered]){
+    state.role = remembered;
+    await loadTodayChecklist();
+    if(remembered==='admin'){ state.screen='admin'; state.adminTab='today'; startTodayPolling(); }
+    else { state.screen='parent'; state.parentTab='peringkat'; }
+  } else {
+    state.screen = 'login';
+  }
+  render();
+}
+
+/* ---------------- Data helpers ---------------- */
+async function loadTodayChecklist(){
+  const c = await storeGet(checklistKey(todayKey()));
+  state.todayChecklist = c || {};
+}
+async function saveTodayChecklist(){ await storeSet(checklistKey(todayKey()), state.todayChecklist); }
+function studentsByGroup(group){ return state.students.filter(s=>s.group===group); }
+function tasksByGroup(group){ return state.tasks.filter(t=>t.group===group); }
+function doneEntries(studentId){ return state.todayChecklist[studentId] || {}; }
+function doneCount(studentId){ return Object.keys(doneEntries(studentId)).length; }
+
+function rankList(group){
+  const total = tasksByGroup(group).length;
+  const list = studentsByGroup(group).map(s=>{
+    const done = doneCount(s.id);
+    return {...s, done, total, pct: total? done/total:0};
+  });
+  list.sort((a,b)=> b.pct-a.pct || b.done-a.done || a.name.localeCompare(b.name));
+  return list;
+}
+function activeRankList(group, limit){
+  const list = rankList(group).filter(s=>s.done>0);
+  return limit ? list.slice(0,limit) : list;
+}
+function inactiveList(group){ return rankList(group).filter(s=>s.done===0); }
+
+async function computeMonthly(yearMonth){
+  const [year, month] = yearMonth.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const now = new Date();
+  const isCurrent = now.getFullYear()===year && (now.getMonth()+1)===month;
+  const lastDay = isCurrent ? now.getDate() : daysInMonth;
+  const totals = {};
+  state.students.forEach(s=> totals[s.id]=0);
+  const keys = [];
+  for(let d=1; d<=lastDay; d++){ keys.push(`${year}-${pad(month)}-${pad(d)}`); }
+  const results = await Promise.all(keys.map(k=> storeGet(checklistKey(k))));
+  results.forEach(obj=>{
+    if(!obj) return;
+    Object.keys(obj).forEach(sid=>{
+      if(totals[sid]===undefined) totals[sid]=0;
+      totals[sid] += Object.keys(obj[sid]||{}).length;
+    });
+  });
+  const rows = state.students.map(s=>{
+    const total = tasksByGroup(s.group).length;
+    const maxPossible = lastDay * (total||1);
+    const doneSum = totals[s.id]||0;
+    const pct = maxPossible ? Math.round(doneSum/maxPossible*1000)/10 : 0;
+    return {...s, doneSum, maxPossible, pct};
+  });
+  rows.sort((a,b)=> b.pct-a.pct || a.name.localeCompare(b.name));
+  return { rows, lastDay };
+}
+function dateKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function mondayOf(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  const day = d.getDay();
+  const diff = day===0 ? -6 : 1-day;
+  d.setDate(d.getDate()+diff);
+  return dateKey(d);
+}
+function weekRangeLabel(mondayIso){
+  const start = new Date(mondayIso+'T00:00:00');
+  const end = new Date(start); end.setDate(start.getDate()+6);
+  const fmt = (d)=> d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+async function computeWeekly(mondayIso){
+  const start = new Date(mondayIso+'T00:00:00');
+  const now = new Date();
+  const keys = [];
+  for(let i=0;i<7;i++){
+    const d = new Date(start); d.setDate(start.getDate()+i);
+    if(d > now) break;
+    keys.push(dateKey(d));
+  }
+  const lastDay = keys.length || 1;
+  const totals = {};
+  state.students.forEach(s=> totals[s.id]=0);
+  const results = await Promise.all(keys.map(k=> storeGet(checklistKey(k))));
+  results.forEach(obj=>{
+    if(!obj) return;
+    Object.keys(obj).forEach(sid=>{
+      if(totals[sid]===undefined) totals[sid]=0;
+      totals[sid] += Object.keys(obj[sid]||{}).length;
+    });
+  });
+  const rows = state.students.map(s=>{
+    const total = tasksByGroup(s.group).length;
+    const maxPossible = lastDay * (total||1);
+    const doneSum = totals[s.id]||0;
+    const pct = maxPossible ? Math.round(doneSum/maxPossible*1000)/10 : 0;
+    return {...s, doneSum, maxPossible, pct};
+  });
+  rows.sort((a,b)=> b.pct-a.pct || a.name.localeCompare(b.name));
+  return { rows, lastDay };
+}
+function keysForPeriod(period, periodValue){
+  if(period==='mingguan'){
+    const start = new Date(periodValue+'T00:00:00');
+    const now = new Date();
+    const keys = [];
+    for(let i=0;i<7;i++){
+      const d = new Date(start); d.setDate(start.getDate()+i);
+      if(d > now) break;
+      keys.push(dateKey(d));
+    }
+    return keys;
+  }
+  const [year, month] = periodValue.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const now = new Date();
+  const isCurrent = now.getFullYear()===year && (now.getMonth()+1)===month;
+  const lastDay = isCurrent ? now.getDate() : daysInMonth;
+  const keys = [];
+  for(let d=1; d<=lastDay; d++){ keys.push(`${year}-${pad(month)}-${pad(d)}`); }
+  return keys;
+}
+async function computeItemStats(keys, group){
+  const students = studentsByGroup(group);
+  const tasks = tasksByGroup(group);
+  if(students.length===0 || tasks.length===0 || keys.length===0){
+    return tasks.map(t=>({id:t.id, name:t.name, done:0, maxPossible:0, pct:0}));
+  }
+  const studentIds = new Set(students.map(s=>s.id));
+  const counts = {};
+  tasks.forEach(t=> counts[t.id]=0);
+  const results = await Promise.all(keys.map(k=> storeGet(checklistKey(k))));
+  results.forEach(obj=>{
+    if(!obj) return;
+    Object.keys(obj).forEach(sid=>{
+      if(!studentIds.has(sid)) return;
+      const entries = obj[sid]||{};
+      Object.keys(entries).forEach(tid=>{
+        if(counts[tid]!==undefined) counts[tid]++;
+      });
+    });
+  });
+  const maxPossible = students.length * keys.length;
+  const rows = tasks.map(t=>{
+    const done = counts[t.id]||0;
+    const pct = maxPossible ? Math.round(done/maxPossible*1000)/10 : 0;
+    return { id:t.id, name:t.name, done, maxPossible, pct };
+  });
+  rows.sort((a,b)=> a.pct-b.pct || a.name.localeCompare(b.name));
+  return rows;
+}
+async function computeTrend(keys, group){
+  if(keys.length===0) return [];
+  const students = studentsByGroup(group);
+  const total = tasksByGroup(group).length;
+  const results = await Promise.all(keys.map(k=> storeGet(checklistKey(k))));
+  const maxPerDay = students.length * (total||1);
+  return keys.map((k,i)=>{
+    const obj = results[i] || {};
+    let doneSum = 0;
+    students.forEach(s=>{ doneSum += Object.keys(obj[s.id]||{}).length; });
+    const pct = maxPerDay ? Math.round(doneSum/maxPerDay*1000)/10 : 0;
+    return { date:k, pct };
+  });
+}
+async function computeCalendar(studentId, ym, total){
+  const [year, month] = ym.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const now = new Date();
+  const isCurrent = now.getFullYear()===year && (now.getMonth()+1)===month;
+  const lastDay = isCurrent ? now.getDate() : daysInMonth;
+  const keys = [];
+  for(let d=1; d<=daysInMonth; d++){ keys.push(`${year}-${pad(month)}-${pad(d)}`); }
+  const results = await Promise.all(keys.map(k=> storeGet(checklistKey(k))));
+  return keys.map((k,i)=>{
+    const dayNum = i+1;
+    if(dayNum > lastDay) return { date:k, day:dayNum, status:'future' };
+    const obj = results[i];
+    const doneN = obj && obj[studentId] ? Object.keys(obj[studentId]).length : 0;
+    let status;
+    if(doneN===0) status = 'none';
+    else if(total && doneN>=total) status = 'full';
+    else status = 'partial';
+    return { date:k, day:dayNum, status, doneN, total };
+  });
+}
+async function computeStreak(studentId, total){
+  if(!total) return 0;
+  const now = new Date();
+  const days = [];
+  for(let i=0;i<60;i++){
+    const d = new Date(now); d.setDate(now.getDate()-i);
+    days.push(dateKey(d));
+  }
+  const results = await Promise.all(days.map(k=> storeGet(checklistKey(k))));
+  const doneCounts = results.map(obj=> obj && obj[studentId] ? Object.keys(obj[studentId]).length : 0);
+  let idx = 0;
+  if(doneCounts[0] < total) idx = 1;
+  let streak = 0;
+  for(; idx<doneCounts.length; idx++){
+    if(doneCounts[idx] >= total) streak++;
+    else break;
+  }
+  return streak;
+}
+async function loadProfile(child, ym){
+  const [{rows}, streak] = await Promise.all([
+    computeMonthly(ym),
+    computeStreak(child.id, tasksByGroup(child.group).length)
+  ]);
+  const row = rows.find(r=>r.id===child.id);
+  const groupRows = rows.filter(r=>r.group===child.group);
+  const isTop = groupRows.length>0 && groupRows[0].id===child.id && row && row.pct>0;
+  state.profileResult = {ym, row, isTop};
+  state.streakCount = streak;
+  render();
+}
+
+/* ---------------- Polling for admin "today" tab ---------------- */
+function startTodayPolling(){
+  stopTodayPolling();
+  pollTimer = setInterval(async ()=>{
+    if(!(state.screen==='admin' && state.adminTab==='today')){ stopTodayPolling(); return; }
+    await loadTodayChecklist();
+    render();
+  }, 6000);
+}
+function stopTodayPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+
+/* ---------------- Actions ---------------- */
+async function doLogin(){
+  const idInput = (document.getElementById('idInput').value||'').trim().toLowerCase();
+  const pwInput = document.getElementById('pwInputLogin').value||'';
+  const remember = document.getElementById('rememberChk').checked;
+  let matchedRole = null;
+  for(const role of Object.keys(state.credentials)){
+    if(state.credentials[role].id.toLowerCase() === idInput){ matchedRole = role; break; }
+  }
+  if(matchedRole && state.credentials[matchedRole].password === pwInput){
+    state.role = matchedRole;
+    state.loginError='';
+    await loadTodayChecklist();
+    if(remember){ await storeSet('remembered-role', matchedRole, false); }
+    if(matchedRole==='admin'){ state.screen='admin'; state.adminTab='today'; startTodayPolling(); }
+    else { state.screen='parent'; state.selectedChildId=null; state.parentTab='peringkat'; }
+  } else {
+    state.loginError = 'ID atau password salah, silakan coba lagi.';
+  }
+  render();
+}
+async function doLogout(){
+  stopTodayPolling();
+  await storeSet('remembered-role', null, false);
+  state.role=null; state.screen='login'; state.loginError='';
+  render();
+}
+async function toggleTask(studentId, taskId){
+  const entries = {...(state.todayChecklist[studentId]||{})};
+  if(entries[taskId]){ delete entries[taskId]; }
+  else { entries[taskId] = { time: new Date().toISOString(), photo: null }; }
+  state.todayChecklist = {...state.todayChecklist, [studentId]:entries};
+  render();
+  await saveTodayChecklist();
+}
+function fileToBase64(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=> resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function uploadPhotoToDrive(file, fileName){
+  if(!state.appScriptUrl){ showToast('URL Apps Script belum diatur di menu Pengaturan'); return null; }
+  try{
+    const base64 = await fileToBase64(file);
+    const res = await fetch(state.appScriptUrl, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ image: base64, fileName, mimeType: file.type || 'image/jpeg' })
+    });
+    const data = await res.json();
+    if(data && data.success) return data.url;
+    console.error('Upload gagal', data && data.error);
+    return null;
+  }catch(e){
+    console.error('Upload error', e);
+    return null;
+  }
+}
+async function attachTaskPhoto(studentId, taskId, file){
+  if(!file) return;
+  showToast('Mengunggah foto…');
+  const student = state.students.find(s=>s.id===studentId);
+  const task = state.tasks.find(t=>t.id===taskId);
+  const safeName = `${student?student.name:'santri'}-${task?task.name:'amaliyah'}-${Date.now()}.jpg`.replace(/[^a-zA-Z0-9.\-]+/g,'_');
+  const url = await uploadPhotoToDrive(file, safeName);
+  if(!url){ showToast('Gagal mengunggah foto, coba lagi'); return; }
+  const entries = {...(state.todayChecklist[studentId]||{})};
+  const existing = entries[taskId];
+  entries[taskId] = { time: (existing && existing.time) || new Date().toISOString(), photo: url };
+  state.todayChecklist = {...state.todayChecklist, [studentId]:entries};
+  render();
+  await saveTodayChecklist();
+  showToast('Foto bukti tersimpan');
+}
+async function addStudent(data){
+  const name = (data.name||'').trim();
+  if(!name) return;
+  state.students.push({
+    id:uid(data.group==='banin'?'b':'g'),
+    name,
+    group:data.group,
+    nis:(data.nis||'').trim(),
+    kelas:(data.kelas||'').trim(),
+    hpOrtu:(data.hpOrtu||'').trim(),
+    tglLahir:data.tglLahir||''
+  });
+  await storeSet('students', state.students);
+  render();
+  showToast('Santri ditambahkan');
+}
+async function deleteStudent(id){
+  state.students = state.students.filter(s=>s.id!==id);
+  await storeSet('students', state.students);
+  render();
+  showToast('Santri dihapus');
+}
+async function submitSaran(studentId, message){
+  const text = (message||'').trim();
+  if(!text) return;
+  const student = state.students.find(s=>s.id===studentId);
+  state.saranList = [
+    { id:uid('sr'), studentId, studentName: student?student.name:'', group: student?student.group:'', message:text, createdAt: new Date().toISOString(), read:false },
+    ...state.saranList
+  ];
+  await storeSet('saran', state.saranList);
+  render();
+  showToast('Saran & masukan terkirim');
+}
+async function markSaranRead(id, read){
+  state.saranList = state.saranList.map(s=> s.id===id ? {...s, read} : s);
+  await storeSet('saran', state.saranList);
+  render();
+}
+async function deleteSaran(id){
+  state.saranList = state.saranList.filter(s=>s.id!==id);
+  await storeSet('saran', state.saranList);
+  render();
+  showToast('Saran dihapus');
+}
+async function addTask(name, group){
+  if(!name || !name.trim()) return;
+  state.tasks.push({id:uid('t'), name:name.trim(), group});
+  await storeSet('tasks', state.tasks);
+  render();
+  showToast('Amaliyah ditambahkan');
+}
+async function saveTaskEdit(id, newName){
+  if(!newName || !newName.trim()) return;
+  const t = state.tasks.find(x=>x.id===id);
+  if(t) t.name = newName.trim();
+  await storeSet('tasks', state.tasks);
+  state.editingTaskId = null;
+  render();
+  showToast('Amaliyah diperbarui');
+}
+async function deleteTask(id){
+  state.tasks = state.tasks.filter(t=>t.id!==id);
+  await storeSet('tasks', state.tasks);
+  render();
+  showToast('Amaliyah dihapus');
+}
+async function saveCredentialsAction(newCreds){
+  state.credentials = newCreds;
+  await storeSet('credentials', newCreds);
+  state.settingsMsg = 'Info login berhasil disimpan.';
+  render();
+}
+
+/* ---------------- Render dispatch ---------------- */
+function render(){
+  const app = document.getElementById('app');
+  if(state.screen==='loading'){ app.innerHTML = `<div class="wrap"><p class="muted" style="padding-top:40px;text-align:center;">Memuat…</p></div>`; return; }
+  if(state.screen==='login'){ app.innerHTML = renderLogin(); attachLoginEvents(); return; }
+  if(state.screen==='admin'){ app.innerHTML = renderAdmin(); attachAdminEvents(); return; }
+  if(state.screen==='parent'){ app.innerHTML = renderParent(); attachParentEvents(); return; }
+}
+
+function renderTopbar(){
+  const roleLabel = state.role==='admin' ? 'Guru / Admin' : (state.role==='banin' ? 'Wali Murid — Banin' : 'Wali Murid — Banat');
+  return `
+  <div class="topbar">
+    <button id="menuToggle" aria-label="Menu">☰</button>
+    <div class="brand">
+      <div class="kicker">${SCHOOL_NAME}</div>
+      <div class="title">${roleLabel}</div>
+    </div>
+    <button id="logoutBtn">Keluar</button>
+  </div>`;
+}
+function renderSidebar(tabs, activeKey, dataAttr){
+  return `
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <nav class="sidebar" id="sidebarMenu">
+    <div class="sidebar-header">${SCHOOL_NAME}</div>
+    ${tabs.map(([k,l])=>`<button class="sidebar-item ${activeKey===k?'active':''}" data-${dataAttr}="${k}">${l}</button>`).join('')}
+  </nav>`;
+}
+function attachSidebarEvents(){
+  const toggle = document.getElementById('menuToggle');
+  const overlay = document.getElementById('sidebarOverlay');
+  const sidebar = document.getElementById('sidebarMenu');
+  if(toggle && sidebar && overlay){
+    toggle.onclick = ()=>{ sidebar.classList.add('open'); overlay.classList.add('show'); };
+    overlay.onclick = ()=>{ sidebar.classList.remove('open'); overlay.classList.remove('show'); };
+  }
+}
+
+function renderLogin(){
+  return `
+  <div class="wrap">
+    <div class="login-hero">
+      <div class="school">${SCHOOL_NAME}</div>
+      <div class="display">Amaliyah Harian Santri</div>
+      <p class="muted">Masuk untuk melihat &amp; mengisi ceklis kegiatan</p>
+    </div>
+    <div class="card">
+      <div class="field">
+        <label>ID</label>
+        <input type="text" id="idInput" placeholder="Masukkan ID" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="pwInputLogin" placeholder="Masukkan password" autocomplete="current-password">
+          <button type="button" class="pw-eye" id="togglePw">👁</button>
+        </div>
+      </div>
+      <label class="check-row" for="rememberChk">
+        <input type="checkbox" id="rememberChk">
+        Simpan login saya di perangkat ini
+      </label>
+      ${state.loginError ? `<p style="color:var(--red);font-size:13px;margin:-6px 0 12px;">${state.loginError}</p>` : ''}
+      <button class="btn btn-primary btn-block" id="submitLogin">Masuk</button>
+    </div>
+  </div>`;
+}
+function attachLoginEvents(){
+  document.getElementById('submitLogin').onclick = doLogin;
+  ['idInput','pwInputLogin'].forEach(id=>{
+    document.getElementById(id).addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+  });
+  document.getElementById('togglePw').onclick = ()=>{
+    const pw = document.getElementById('pwInputLogin');
+    pw.type = pw.type==='password' ? 'text' : 'password';
+  };
+}
+
+/* ================= Admin ================= */
+function renderAdmin(){
+  const unreadSaran = state.saranList.filter(s=>!s.read).length;
+  const tabs = [['today','Hari Ini'],['students','Santri'],['tasks','Amaliyah'],['monthly','Rekap'],['analytics','Analitik'],['saran',`Saran & Masukan${unreadSaran?` (${unreadSaran})`:''}`],['settings','Pengaturan']];
+  let body = '';
+  if(state.adminTab==='today') body = renderAdminToday();
+  if(state.adminTab==='students') body = renderAdminStudents();
+  if(state.adminTab==='tasks') body = renderAdminTasks();
+  if(state.adminTab==='monthly') body = renderAdminMonthly();
+  if(state.adminTab==='analytics') body = renderAdminAnalytics();
+  if(state.adminTab==='saran') body = renderAdminSaran();
+  if(state.adminTab==='settings') body = renderAdminSettings();
+  return `
+  ${renderTopbar()}
+  ${renderSidebar(tabs, state.adminTab, 'tab')}
+  <div class="wrap wide" style="padding-top:20px;">${body}</div>`;
+}
+
+function rankBadge(i){ return i===0?'🏆':(i===1?'🥈':(i===2?'🥉':(i+1))); }
+
+function renderTodayRow(s,i){
+  const pct = Math.round(s.pct*100);
+  const expanded = state.expandedStudent===s.id;
+  return `
+  <div class="srow clickable" data-expand-student="${s.id}">
+    <div class="rank-badge ${i===0?'gold':''}">${rankBadge(i)}</div>
+    <div class="sname">${s.name}</div>
+    <div class="sprog"><div style="width:${pct}%;"></div></div>
+    <div class="sfrac">${s.done}/${s.total}</div>
+  </div>
+  ${expanded?renderDetailPanel(s):''}`;
+}
+function renderDetailPanel(s){
+  const entries = doneEntries(s.id);
+  const list = tasksByGroup(s.group);
+  return `<div class="detail-panel">
+    ${list.length===0?'<div class="muted">Belum ada amaliyah untuk kelompok ini.</div>':list.map(t=>{
+      const entry = entries[t.id];
+      return `<div class="detail-row"><span>${t.name}</span><b>${entry?fmtTime(entry.time):'Belum'}${entry&&entry.photo?` · <a href="${entry.photo}" target="_blank" rel="noopener">Lihat foto</a>`:''}</b></div>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderAdminToday(){
+  const groups = [['banin','Banin'],['banat','Banat']];
+  return `
+  <div class="row between" style="margin-bottom:2px;">
+    <p class="muted" style="margin:0;">Data diperbarui otomatis setiap beberapa detik.</p>
+    <button class="btn btn-ghost btn-sm" id="refreshTodayBtn">⟳ Refresh</button>
+  </div>
+  ${groups.map(([g,label])=>{
+    const active = activeRankList(g);
+    const inactive = inactiveList(g);
+    return `
+    <div class="section-title">Papan Peringkat — ${label}</div>
+    <div class="card">
+      ${active.length===0?'<div class="empty">Belum ada yang mengisi hari ini.</div>':active.map((s,i)=>renderTodayRow(s,i)).join('')}
+    </div>
+    <div class="section-title">Belum Mengisi — ${label}</div>
+    <div class="card">
+      ${inactive.length===0?'<div class="empty">Semua santri sudah mengisi 🎉</div>':inactive.map(s=>{
+        const expanded = state.expandedStudent===s.id;
+        return `
+        <div class="srow clickable" data-expand-student="${s.id}">
+          <div class="sname">${s.name}</div>
+          <div class="muted">Belum mengisi</div>
+        </div>
+        ${expanded?renderDetailPanel(s):''}`;
+      }).join('')}
+    </div>`;
+  }).join('')}`;
+}
+
+function renderAdminStudents(){
+  const groups = [['banin','Banin'],['banat','Banat']];
+  return `
+  <div class="card">
+    <div class="field">
+      <label>Nama santri baru</label>
+      <input type="text" id="newStudentName" placeholder="Nama lengkap santri">
+    </div>
+    <div class="row" style="gap:10px;">
+      <div class="field" style="flex:1;">
+        <label>Grup</label>
+        <select id="newStudentGroup">
+          <option value="banin">Banin</option>
+          <option value="banat">Banat</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1;">
+        <label>Kelas</label>
+        <input type="text" id="newStudentKelas" placeholder="mis. 7A">
+      </div>
+    </div>
+    <div class="row" style="gap:10px;">
+      <div class="field" style="flex:1;">
+        <label>NIS</label>
+        <input type="text" id="newStudentNis" placeholder="Nomor Induk Santri">
+      </div>
+      <div class="field" style="flex:1;">
+        <label>Tanggal lahir</label>
+        <input type="date" id="newStudentTglLahir">
+      </div>
+    </div>
+    <div class="field">
+      <label>No. HP orang tua</label>
+      <input type="text" id="newStudentHpOrtu" placeholder="mis. 08123456789">
+    </div>
+    <button class="btn btn-primary btn-block" id="addStudentBtn">Tambah Santri</button>
+  </div>
+  ${groups.map(([g,label])=>{
+    const list = studentsByGroup(g);
+    return `
+    <div class="section-title">${label} (${list.length})</div>
+    <div class="card">
+      ${list.length===0?'<div class="empty">Belum ada santri.</div>':list.map(s=>`
+        <div class="list-edit-row">
+          <div class="nm">
+            <div>${s.name}</div>
+            <div class="muted" style="font-size:12px;">${[s.kelas?`Kelas ${s.kelas}`:'', s.nis?`NIS ${s.nis}`:''].filter(Boolean).join(' · ')}</div>
+          </div>
+          <button class="icon-btn" data-del-student="${s.id}">✕</button>
+        </div>`).join('')}
+    </div>`;
+  }).join('')}`;
+}
+
+function renderAdminTasks(){
+  const groups = [['banin','Banin'],['banat','Banat']];
+  return groups.map(([g,label])=>{
+    const list = tasksByGroup(g);
+    return `
+    <div class="section-title">Amaliyah ${label}</div>
+    <div class="card">
+      <div class="inline-add">
+        <input type="text" id="newTask-${g}" placeholder="Tambah amaliyah ${label} baru">
+        <button class="btn btn-primary" data-add-task="${g}">Tambah</button>
+      </div>
+      ${list.length===0?'<div class="empty">Belum ada amaliyah.</div>':list.map(t=>{
+        if(state.editingTaskId===t.id){
+          return `
+          <div class="list-edit-row">
+            <input type="text" id="editTaskInput-${t.id}" value="${t.name}">
+            <button class="icon-btn" data-save-task="${t.id}">💾</button>
+            <button class="icon-btn" data-cancel-task="${t.id}">✕</button>
+          </div>`;
+        }
+        return `
+        <div class="list-edit-row">
+          <div class="nm">${t.name}</div>
+          <button class="icon-btn" data-edit-task="${t.id}">✎</button>
+          <button class="icon-btn" data-del-task="${t.id}">✕</button>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
+function renderCalendarGrid(student, calData, ym){
+  const [year,month] = ym.split('-').map(Number);
+  const firstDow = new Date(year, month-1, 1).getDay();
+  const leadBlanks = (firstDow+6)%7;
+  const dowLabels = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+  const cells = [];
+  for(let i=0;i<leadBlanks;i++) cells.push('<div></div>');
+  calData.forEach(d=>{
+    let cls='future', title='Belum waktunya';
+    if(d.status==='full'){ cls='full'; title=`Lengkap (${d.doneN}/${d.total})`; }
+    else if(d.status==='partial'){ cls='partial'; title=`Sebagian (${d.doneN}/${d.total})`; }
+    else if(d.status==='none'){ cls='none'; title='Tidak mengisi'; }
+    cells.push(`<div class="cal-cell ${cls}" title="${title}">${d.day}</div>`);
+  });
+  return `
+  <div class="card">
+    <div class="row between" style="margin-bottom:10px;">
+      <h3 style="margin:0;font-size:14.5px;">📅 Riwayat ${student.name} — ${monthLabelId(ym)}</h3>
+      <button class="icon-btn" id="closeCalendarBtn">✕</button>
+    </div>
+    <div class="cal-dow-row">${dowLabels.map(l=>`<div>${l}</div>`).join('')}</div>
+    <div class="cal-grid">${cells.join('')}</div>
+    <div class="row" style="gap:12px;margin-top:12px;flex-wrap:wrap;">
+      <span class="cal-legend"><i class="full"></i> Lengkap</span>
+      <span class="cal-legend"><i class="partial"></i> Sebagian</span>
+      <span class="cal-legend"><i class="none"></i> Tidak mengisi</span>
+    </div>
+  </div>`;
+}
+function renderAdminMonthly(){
+  const period = state.recapPeriod || 'bulanan';
+  const defaultYm = state.monthYear || currentYm();
+  const defaultWeekStart = state.weekStart || mondayOf(todayKey());
+  let tableHtml = '<div class="empty">Pilih periode lalu tekan "Tampilkan" untuk melihat rekap.</div>';
+  let copyBtnHtml = '';
+  let teladanHtml = '';
+  if(state.monthlyResult){
+    const {rows} = state.monthlyResult;
+    const baninTop = rows.find(r=>r.group==='banin' && r.pct>0);
+    const banatTop = rows.find(r=>r.group==='banat' && r.pct>0);
+    if(baninTop || banatTop){
+      const parts = [];
+      if(baninTop) parts.push(`${baninTop.name} — Banin (${baninTop.pct}%)`);
+      if(banatTop) parts.push(`${banatTop.name} — Banat (${banatTop.pct}%)`);
+      teladanHtml = `<div class="teladan-banner">🌟 <b>Santri Teladan Periode Ini:</b><br>${parts.join('<br>')}</div>`;
+    }
+    tableHtml = `
+    <table>
+      <tr><th>#</th><th>Nama</th><th>Kelompok</th><th>Selesai</th><th>Nilai</th><th></th></tr>
+      ${rows.map((r,i)=>`
+        <tr>
+          <td>${i+1}</td><td>${r.name}</td><td>${r.group==='banin'?'Banin':'Banat'}</td>
+          <td>${r.doneSum}/${r.maxPossible}</td>
+          <td><span class="pill teal">${r.pct}% (${gradeLetter(r.pct)})</span></td>
+          <td style="white-space:nowrap;">
+            <button class="icon-btn" data-copy-student-wa="${r.id}" title="Salin laporan WA santri ini">📋</button>
+            <button class="icon-btn" data-cal-student="${r.id}" title="Lihat riwayat kalender">📅</button>
+          </td>
+        </tr>`).join('')}
+    </table>`;
+    copyBtnHtml = `<button class="btn btn-ghost btn-sm" id="copyMonthlyWaBtn" style="margin-top:14px;">📋 Salin Laporan WA — Semua Santri</button>`;
+  }
+  let calendarHtml = '';
+  if(state.calendarStudentId){
+    const student = state.students.find(s=>s.id===state.calendarStudentId);
+    if(student){
+      calendarHtml = state.calendarResult && state.calendarResult.studentId===student.id
+        ? renderCalendarGrid(student, state.calendarResult.data, state.calendarResult.ym)
+        : '<div class="card"><div class="empty">Memuat riwayat…</div></div>';
+    }
+  }
+  return `
+  <div class="card">
+    <div class="row" style="margin-bottom:10px;flex-wrap:wrap;">
+      <select id="recapPeriodSelect" style="max-width:130px;">
+        <option value="bulanan" ${period==='bulanan'?'selected':''}>Bulanan</option>
+        <option value="mingguan" ${period==='mingguan'?'selected':''}>Mingguan</option>
+      </select>
+      ${period==='bulanan'
+        ? `<input type="month" id="monthPicker" value="${defaultYm}" style="max-width:170px;">`
+        : `<input type="date" id="weekPicker" value="${defaultWeekStart}" style="max-width:170px;">`}
+      <button class="btn btn-primary" id="showMonthlyBtn">Tampilkan</button>
+    </div>
+    ${period==='mingguan' ? `<p class="muted" style="margin:0 0 12px;">Minggu: ${weekRangeLabel(defaultWeekStart)} (Senin–Ahad, pilih tanggal mana saja pada minggu tsb)</p>` : ''}
+    ${teladanHtml}
+    ${tableHtml}
+    ${copyBtnHtml}
+  </div>
+  ${calendarHtml}`;
+}
+
+function renderClassCard(label, stats){
+  return `
+  <div class="card" style="flex:1;min-width:190px;">
+    <div class="section-title" style="margin-top:0;">Kelas ${label}</div>
+    <div class="grade-letter" style="font-size:38px;">${stats.n?stats.letter:'—'}</div>
+    <div class="muted" style="margin:2px 0 10px;">${stats.n?`${gradeDesc(stats.letter)} — rata-rata ${stats.avgPct}%`:'Belum ada santri'}</div>
+    <div class="detail-row"><span>Jumlah santri</span><b>${stats.n}</b></div>
+    <div class="detail-row"><span>Sudah mengisi</span><b>${stats.active}</b></div>
+    <div class="detail-row"><span>Belum mengisi</span><b>${stats.n-stats.active}</b></div>
+    ${stats.top?`<div class="detail-row"><span>🌟 Teladan</span><b>${stats.top.name} (${stats.top.pct}%)</b></div>`:''}
+  </div>`;
+}
+function renderComparisonCard(banin, banat){
+  let verdict;
+  if(banin.n===0 && banat.n===0){
+    verdict = 'Belum ada data santri untuk dibandingkan.';
+  } else if(banin.avgPct===banat.avgPct){
+    verdict = 'Kelas Banin dan Banat seimbang — rata-rata nilai sama pada periode ini.';
+  } else {
+    const baninWins = banin.avgPct>banat.avgPct;
+    const winnerLabel = baninWins?'Banin':'Banat';
+    const diff = Math.round(Math.abs(banin.avgPct-banat.avgPct)*10)/10;
+    verdict = `Kelas <b>${winnerLabel}</b> lebih rajin pada periode ini, unggul ${diff}% dibanding kelas lainnya.`;
+  }
+  return `
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">🏆 Perbandingan Kelas Terrajin</div>
+    <p style="margin:0;font-size:14.5px;line-height:1.5;">${verdict}</p>
+  </div>`;
+}
+function renderMissedItemsCard(label, items){
+  const missed = items.filter(it=>it.maxPossible>0).slice(0,5);
+  return `
+  <div class="card" style="flex:1;min-width:220px;">
+    <div class="section-title" style="margin-top:0;">😕 Paling Sering Terlewat — ${label}</div>
+    ${missed.length===0?'<div class="empty">Belum ada data cukup.</div>':missed.map((it,i)=>`
+      <div class="detail-row"><span>${i+1}. ${it.name}</span><b>${it.pct}% terisi (${it.done}/${it.maxPossible})</b></div>
+    `).join('')}
+  </div>`;
+}
+function renderTrendChart(trendBanin, trendBanat){
+  const n = Math.max(trendBanin.length, trendBanat.length);
+  if(n===0) return '<div class="empty">Belum ada data tren untuk periode ini.</div>';
+  const w=600, h=220, padL=32, padR=8, padT=14, padB=22;
+  const plotW = w-padL-padR, plotH = h-padT-padB;
+  const xFor = (i)=> padL + (n<=1?0:(i/(n-1))*plotW);
+  const yFor = (pct)=> padT + plotH - (pct/100)*plotH;
+  const toPath = (data)=> data.length? data.map((d,i)=>`${i===0?'M':'L'}${xFor(i).toFixed(1)},${yFor(d.pct).toFixed(1)}`).join(' ') : '';
+  const gridLines = [0,25,50,75,100].map(v=>`
+    <line x1="${padL}" y1="${yFor(v).toFixed(1)}" x2="${w-padR}" y2="${yFor(v).toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
+    <text x="${padL-6}" y="${(yFor(v)+3.5).toFixed(1)}" font-size="10" fill="var(--ink-soft)" text-anchor="end">${v}%</text>
+  `).join('');
+  const fmtShort = (iso)=>{ if(!iso) return ''; const p=iso.split('-'); return `${p[2]}/${p[1]}`; };
+  const firstLabel = fmtShort((trendBanin[0]||trendBanat[0]||{}).date);
+  const lastLabel = fmtShort((trendBanin[trendBanin.length-1]||trendBanat[trendBanat.length-1]||{}).date);
+  return `
+  <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;">
+    ${gridLines}
+    ${trendBanin.length?`<path d="${toPath(trendBanin)}" fill="none" stroke="var(--teal)" stroke-width="2.5"/>`:''}
+    ${trendBanat.length?`<path d="${toPath(trendBanat)}" fill="none" stroke="var(--gold)" stroke-width="2.5"/>`:''}
+    <text x="${padL}" y="${h-6}" font-size="10" fill="var(--ink-soft)">${firstLabel}</text>
+    <text x="${w-padR}" y="${h-6}" font-size="10" fill="var(--ink-soft)" text-anchor="end">${lastLabel}</text>
+  </svg>
+  <div class="row" style="gap:14px;margin-top:8px;">
+    <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);"><span style="width:10px;height:10px;border-radius:50%;background:var(--teal);display:inline-block;"></span>Banin</div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);"><span style="width:10px;height:10px;border-radius:50%;background:var(--gold);display:inline-block;"></span>Banat</div>
+  </div>`;
+}
+function renderAdminAnalytics(){
+  const period = state.analyticsPeriod || 'bulanan';
+  const defaultYm = state.analyticsMonthYear || currentYm();
+  const defaultWeekStart = state.analyticsWeekStart || mondayOf(todayKey());
+  let resultHtml = '';
+  if(state.analyticsResult){
+    const rows = state.analyticsResult.rows;
+    const banin = classAnalytics(rows,'banin');
+    const banat = classAnalytics(rows,'banat');
+    const items = state.analyticsItemStats;
+    const trend = state.analyticsTrend;
+    resultHtml = `
+    <div class="row" style="gap:12px;flex-wrap:wrap;align-items:stretch;">
+      ${renderClassCard('Banin', banin)}
+      ${renderClassCard('Banat', banat)}
+    </div>
+    ${renderComparisonCard(banin, banat)}
+    <div class="card">
+      <div class="section-title" style="margin-top:0;">📈 Tren Harian</div>
+      ${trend ? renderTrendChart(trend.banin, trend.banat) : '<div class="empty">Memuat tren…</div>'}
+    </div>
+    <div class="row" style="gap:12px;flex-wrap:wrap;align-items:stretch;">
+      ${items ? renderMissedItemsCard('Banin', items.banin) : '<div class="card" style="flex:1;min-width:220px;"><div class="empty">Memuat…</div></div>'}
+      ${items ? renderMissedItemsCard('Banat', items.banat) : '<div class="card" style="flex:1;min-width:220px;"><div class="empty">Memuat…</div></div>'}
+    </div>`;
+  }
+  return `
+  <div class="card">
+    <div class="row" style="margin-bottom:10px;flex-wrap:wrap;">
+      <select id="analyticsPeriodSelect" style="max-width:130px;">
+        <option value="bulanan" ${period==='bulanan'?'selected':''}>Bulanan</option>
+        <option value="mingguan" ${period==='mingguan'?'selected':''}>Mingguan</option>
+      </select>
+      ${period==='bulanan'
+        ? `<input type="month" id="analyticsMonthPicker" value="${defaultYm}" style="max-width:170px;">`
+        : `<input type="date" id="analyticsWeekPicker" value="${defaultWeekStart}" style="max-width:170px;">`}
+      <button class="btn btn-primary" id="showAnalyticsBtn">Tampilkan</button>
+    </div>
+    ${period==='mingguan' ? `<p class="muted" style="margin:0;">Minggu: ${weekRangeLabel(defaultWeekStart)} (Senin–Ahad)</p>` : ''}
+  </div>
+  ${resultHtml || '<div class="card"><div class="empty">Pilih periode lalu tekan "Tampilkan" untuk melihat analitik kelas.</div></div>'}`;
+}
+
+function renderAdminSettings(){
+  const c = state.credentials;
+  const blocks = [['admin','Guru / Admin'],['banin','Wali Murid Banin'],['banat','Wali Murid Banat']];
+  return `
+  <div class="card" style="max-width:440px;">
+    <h3 style="margin-top:0;font-size:16px;">Info Login</h3>
+    ${blocks.map(([key,label])=>`
+      <div class="cred-block">
+        <h3>${label}</h3>
+        <div class="field"><label>ID</label><input type="text" id="cred-${key}-id" value="${c[key].id}"></div>
+        <div class="field"><label>Password</label><input type="text" id="cred-${key}-pw" value="${c[key].password}"></div>
+      </div>
+    `).join('')}
+    ${state.settingsMsg?`<p class="muted" style="color:var(--teal-dark);">${state.settingsMsg}</p>`:''}
+    <button class="btn btn-primary btn-block" id="saveCredsBtn">Simpan Info Login</button>
+  </div>
+  <div class="card" style="max-width:440px;">
+    <h3 style="margin-top:0;font-size:16px;">Foto Bukti Amaliyah (Google Drive)</h3>
+    <p class="muted" style="margin:0 0 12px;line-height:1.55;">Tempel URL Web App Google Apps Script (berakhiran /exec) supaya foto bukti amaliyah dari orang tua tersimpan otomatis ke Google Drive sekolah.</p>
+    <div class="field">
+      <label>URL Apps Script</label>
+      <input type="text" id="appScriptUrlInput" value="${state.appScriptUrl||''}" placeholder="https://script.google.com/macros/s/.../exec">
+    </div>
+    <button class="btn btn-primary btn-block" id="saveAppScriptBtn">Simpan URL</button>
+  </div>`;
+}
+
+function renderAdminSaran(){
+  const filter = state.saranFilter || 'all';
+  const list = state.saranList.filter(s => filter==='all' ? true : (filter==='unread' ? !s.read : s.read));
+  const unreadCount = state.saranList.filter(s=>!s.read).length;
+  return `
+  <div class="row" style="gap:6px;margin-bottom:14px;">
+    <button class="period-chip ${filter==='all'?'active':''}" data-saranfilter="all">Semua (${state.saranList.length})</button>
+    <button class="period-chip ${filter==='unread'?'active':''}" data-saranfilter="unread">Belum dibaca (${unreadCount})</button>
+    <button class="period-chip ${filter==='read'?'active':''}" data-saranfilter="read">Sudah dibaca</button>
+  </div>
+  <div class="card">
+    ${list.length===0 ? '<div class="empty">Belum ada saran & masukan.</div>' : list.map(s=>`
+      <div class="saran-item ${s.read?'':'unread'}">
+        <div class="saran-top">
+          <div>
+            <div class="saran-name">${s.studentName || '(santri sudah dihapus)'}</div>
+            <div class="muted" style="font-size:12px;">${fmtDateTime(s.createdAt)}${s.group?` · ${s.group==='banin'?'Banin':'Banat'}`:''}</div>
+          </div>
+          ${s.read?'':'<span class="dot-unread"></span>'}
+        </div>
+        <p class="saran-msg">${escapeHtml(s.message).replace(/\n/g,'<br>')}</p>
+        <div class="row" style="gap:8px;margin-top:8px;">
+          <button class="btn btn-ghost btn-sm" data-toggle-saran="${s.id}" data-read="${s.read?'0':'1'}">${s.read?'Tandai belum dibaca':'Tandai sudah dibaca'}</button>
+          <button class="btn btn-ghost btn-sm" data-del-saran="${s.id}">Hapus</button>
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function attachAdminEvents(){
+  attachSidebarEvents();
+  document.getElementById('logoutBtn').onclick = doLogout;
+  document.querySelectorAll('[data-tab]').forEach(el=>{
+    el.onclick = ()=>{
+      state.adminTab = el.dataset.tab; state.monthlyResult=null; state.analyticsResult=null; state.analyticsItemStats=null; state.analyticsTrend=null; state.calendarStudentId=null; state.calendarResult=null; state.expandedStudent=null; state.editingTaskId=null;
+      if(state.adminTab==='today'){ loadTodayChecklist().then(render); startTodayPolling(); }
+      else { stopTodayPolling(); render(); }
+    };
+  });
+  if(state.adminTab==='today'){
+    document.getElementById('refreshTodayBtn').onclick = async ()=>{ await loadTodayChecklist(); render(); showToast('Diperbarui'); };
+    document.querySelectorAll('[data-expand-student]').forEach(el=>{
+      el.onclick = ()=>{ const id = el.dataset.expandStudent; state.expandedStudent = state.expandedStudent===id? null: id; render(); };
+    });
+  }
+  if(state.adminTab==='students'){
+    const doAdd = ()=> addStudent({
+      name: document.getElementById('newStudentName').value,
+      group: document.getElementById('newStudentGroup').value,
+      kelas: document.getElementById('newStudentKelas').value,
+      nis: document.getElementById('newStudentNis').value,
+      tglLahir: document.getElementById('newStudentTglLahir').value,
+      hpOrtu: document.getElementById('newStudentHpOrtu').value
+    });
+    document.getElementById('addStudentBtn').onclick = doAdd;
+    document.getElementById('newStudentName').addEventListener('keydown', e=>{ if(e.key==='Enter') doAdd(); });
+    document.querySelectorAll('[data-del-student]').forEach(el=>{ el.onclick = ()=> deleteStudent(el.dataset.delStudent); });
+  }
+  if(state.adminTab==='tasks'){
+    ['banin','banat'].forEach(g=>{
+      const btn = document.querySelector(`[data-add-task="${g}"]`);
+      const input = document.getElementById(`newTask-${g}`);
+      if(btn && input){
+        const doAdd = ()=> addTask(input.value, g);
+        btn.onclick = doAdd;
+        input.addEventListener('keydown', e=>{ if(e.key==='Enter') doAdd(); });
+      }
+    });
+    document.querySelectorAll('[data-edit-task]').forEach(el=>{ el.onclick = ()=>{ state.editingTaskId = el.dataset.editTask; render(); }; });
+    document.querySelectorAll('[data-cancel-task]').forEach(el=>{ el.onclick = ()=>{ state.editingTaskId = null; render(); }; });
+    document.querySelectorAll('[data-save-task]').forEach(el=>{
+      el.onclick = ()=>{ const id = el.dataset.saveTask; saveTaskEdit(id, document.getElementById(`editTaskInput-${id}`).value); };
+    });
+    document.querySelectorAll('[data-del-task]').forEach(el=>{ el.onclick = ()=> deleteTask(el.dataset.delTask); });
+  }
+  if(state.adminTab==='monthly'){
+    const periodSelect = document.getElementById('recapPeriodSelect');
+    if(periodSelect){
+      periodSelect.onchange = ()=>{
+        state.recapPeriod = periodSelect.value;
+        state.monthlyResult = null;
+        state.calendarStudentId = null;
+        state.calendarResult = null;
+        render();
+      };
+    }
+    document.getElementById('showMonthlyBtn').onclick = async (e)=>{
+      const period = state.recapPeriod || 'bulanan';
+      e.target.textContent = 'Memuat…'; e.target.disabled = true;
+      state.calendarStudentId = null;
+      state.calendarResult = null;
+      if(period==='bulanan'){
+        const ym = document.getElementById('monthPicker').value;
+        state.monthYear = ym;
+        state.monthlyResult = await computeMonthly(ym);
+      } else {
+        const picked = document.getElementById('weekPicker').value;
+        state.weekStart = mondayOf(picked);
+        state.monthlyResult = await computeWeekly(state.weekStart);
+      }
+      render();
+    };
+    const copyBtn = document.getElementById('copyMonthlyWaBtn');
+    if(copyBtn){
+      copyBtn.onclick = async ()=>{
+        const period = state.recapPeriod || 'bulanan';
+        const text = period==='bulanan'
+          ? buildAdminWaReport(state.monthlyResult.rows, state.monthYear || currentYm())
+          : buildAdminWeeklyWaReport(state.monthlyResult.rows, state.weekStart || mondayOf(todayKey()));
+        const ok = await copyToClipboard(text);
+        showToast(ok ? 'Laporan disalin ke clipboard' : 'Gagal menyalin, coba lagi');
+      };
+    }
+    document.querySelectorAll('[data-copy-student-wa]').forEach(el=>{
+      el.onclick = async ()=>{
+        const sid = el.dataset.copyStudentWa;
+        const row = state.monthlyResult.rows.find(r=>r.id===sid);
+        const student = state.students.find(s=>s.id===sid);
+        if(!student || !row) return;
+        const period = state.recapPeriod || 'bulanan';
+        const periodValue = period==='bulanan' ? (state.monthYear || currentYm()) : (state.weekStart || mondayOf(todayKey()));
+        const text = buildStudentWaReport(student, row, period, periodValue);
+        const ok = await copyToClipboard(text);
+        showToast(ok ? 'Laporan disalin ke clipboard' : 'Gagal menyalin, coba lagi');
+      };
+    });
+    document.querySelectorAll('[data-cal-student]').forEach(el=>{
+      el.onclick = async ()=>{
+        const sid = el.dataset.calStudent;
+        if(state.calendarStudentId===sid){ state.calendarStudentId=null; state.calendarResult=null; render(); return; }
+        state.calendarStudentId = sid;
+        state.calendarResult = null;
+        render();
+        const student = state.students.find(s=>s.id===sid);
+        const ym = state.monthYear || currentYm();
+        const total = tasksByGroup(student.group).length;
+        const data = await computeCalendar(sid, ym, total);
+        if(state.calendarStudentId===sid){
+          state.calendarResult = { studentId: sid, ym, data };
+          render();
+        }
+      };
+    });
+    const closeCalBtn = document.getElementById('closeCalendarBtn');
+    if(closeCalBtn){
+      closeCalBtn.onclick = ()=>{ state.calendarStudentId=null; state.calendarResult=null; render(); };
+    }
+  }
+  if(state.adminTab==='analytics'){
+    const periodSelect = document.getElementById('analyticsPeriodSelect');
+    if(periodSelect){
+      periodSelect.onchange = ()=>{
+        state.analyticsPeriod = periodSelect.value;
+        state.analyticsResult = null;
+        state.analyticsItemStats = null;
+        state.analyticsTrend = null;
+        render();
+      };
+    }
+    const showBtn = document.getElementById('showAnalyticsBtn');
+    if(showBtn){
+      showBtn.onclick = async (e)=>{
+        const period = state.analyticsPeriod || 'bulanan';
+        e.target.textContent = 'Memuat…'; e.target.disabled = true;
+        let periodValue;
+        if(period==='bulanan'){
+          periodValue = document.getElementById('analyticsMonthPicker').value;
+          state.analyticsMonthYear = periodValue;
+        } else {
+          const picked = document.getElementById('analyticsWeekPicker').value;
+          periodValue = mondayOf(picked);
+          state.analyticsWeekStart = periodValue;
+        }
+        state.analyticsItemStats = null;
+        state.analyticsTrend = null;
+        const keys = keysForPeriod(period, periodValue);
+        const [monthlyOrWeekly, baninItems, banatItems, baninTrend, banatTrend] = await Promise.all([
+          period==='bulanan' ? computeMonthly(periodValue) : computeWeekly(periodValue),
+          computeItemStats(keys, 'banin'),
+          computeItemStats(keys, 'banat'),
+          computeTrend(keys, 'banin'),
+          computeTrend(keys, 'banat')
+        ]);
+        state.analyticsResult = monthlyOrWeekly;
+        state.analyticsItemStats = { banin: baninItems, banat: banatItems };
+        state.analyticsTrend = { banin: baninTrend, banat: banatTrend };
+        render();
+      };
+    }
+  }
+  if(state.adminTab==='saran'){
+    document.querySelectorAll('[data-saranfilter]').forEach(btn=>{
+      btn.onclick = ()=>{ state.saranFilter = btn.dataset.saranfilter; render(); };
+    });
+    document.querySelectorAll('[data-toggle-saran]').forEach(btn=>{
+      btn.onclick = ()=> markSaranRead(btn.dataset.toggleSaran, btn.dataset.read==='1');
+    });
+    document.querySelectorAll('[data-del-saran]').forEach(btn=>{
+      btn.onclick = ()=>{ if(confirm('Hapus saran ini?')) deleteSaran(btn.dataset.delSaran); };
+    });
+  }
+  if(state.adminTab==='settings'){
+    document.getElementById('saveCredsBtn').onclick = ()=>{
+      const newCreds = {};
+      ['admin','banin','banat'].forEach(key=>{
+        newCreds[key] = {
+          id: document.getElementById(`cred-${key}-id`).value.trim() || DEFAULT_CREDENTIALS[key].id,
+          password: document.getElementById(`cred-${key}-pw`).value || DEFAULT_CREDENTIALS[key].password
+        };
+      });
+      saveCredentialsAction(newCreds);
+    };
+    document.getElementById('saveAppScriptBtn').onclick = async ()=>{
+      const url = document.getElementById('appScriptUrlInput').value.trim();
+      state.appScriptUrl = url;
+      await storeSet('appscript-url', url);
+      showToast('URL Apps Script tersimpan');
+    };
+  }
+}
+
+/* ================= Parent ================= */
+function renderPeringkatBlock(group, highlightId){
+  const label = group==='banin'?'Banin':'Banat';
+  const period = state.peringkatPeriod || 'harian';
+  const periodTabs = `
+  <div class="row" style="gap:6px;margin-bottom:12px;">
+    <button class="period-chip ${period==='harian'?'active':''}" data-pperiod="harian">Harian</button>
+    <button class="period-chip ${period==='mingguan'?'active':''}" data-pperiod="mingguan">Mingguan</button>
+    <button class="period-chip ${period==='bulanan'?'active':''}" data-pperiod="bulanan">Bulanan</button>
+  </div>`;
+
+  let rowsForDisplay;
+  let periodTitle;
+  if(period==='harian'){
+    const top = activeRankList(group,5);
+    periodTitle = 'Papan Peringkat Hari Ini';
+    if(top.length===0){
+      return `
+      ${periodTabs}
+      <div class="section-title">${periodTitle} — ${label}</div>
+      <div class="card"><div class="empty">Belum ada santri yang mengisi hari ini.<br>Jadilah yang pertama! 🌟</div></div>`;
+    }
+    return `
+    ${periodTabs}
+    <div class="section-title">${periodTitle} — ${label}</div>
+    <div class="card">
+      ${top.map((s,i)=>{
+        const pct = Math.round(s.pct*100);
+        return `
+        <div class="srow">
+          <div class="rank-badge ${i===0?'gold':''}">${rankBadge(i)}</div>
+          <div class="sname">${s.name}${s.id===highlightId?' <span class="pill teal">Anak Anda</span>':''}</div>
+          <div class="sprog"><div style="width:${pct}%;"></div></div>
+          <div class="sfrac">${s.done}/${s.total}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  periodTitle = period==='mingguan' ? 'Papan Peringkat Minggu Ini' : 'Papan Peringkat Bulan Ini';
+  if(!state.peringkatResult || state.peringkatResult.period!==period){
+    return `
+    ${periodTabs}
+    <div class="section-title">${periodTitle} — ${label}</div>
+    <div class="card"><div class="empty">Memuat peringkat…</div></div>`;
+  }
+  const top = state.peringkatResult.rows.filter(r=>r.group===group && r.pct>0).slice(0,5);
+  if(top.length===0){
+    return `
+    ${periodTabs}
+    <div class="section-title">${periodTitle} — ${label}</div>
+    <div class="card"><div class="empty">Belum ada data amaliyah pada periode ini.</div></div>`;
+  }
+  return `
+  ${periodTabs}
+  <div class="section-title">${periodTitle} — ${label}</div>
+  <div class="card">
+    ${top.map((s,i)=>`
+      <div class="srow">
+        <div class="rank-badge ${i===0?'gold':''}">${rankBadge(i)}</div>
+        <div class="sname">${s.name}${s.id===highlightId?' <span class="pill teal">Anak Anda</span>':''}</div>
+        <div class="sprog"><div style="width:${s.pct}%;"></div></div>
+        <div class="sfrac">${s.pct}%</div>
+      </div>`).join('')}
+  </div>`;
+}
+function renderParentPilih(group){
+  const list = studentsByGroup(group);
+  return `
+  <div class="section-title">Pilih nama anak Anda</div>
+  <div class="card">
+    ${list.length===0?'<div class="empty">Belum ada data santri.</div>':list.map(s=>`
+      <div class="srow clickable" data-pick-child="${s.id}">
+        <div class="sname">${s.name}</div><div class="muted">›</div>
+      </div>`).join('')}
+  </div>`;
+}
+function renderParentCeklis(child){
+  const list = tasksByGroup(child.group);
+  const entries = doneEntries(child.id);
+  const done = doneCount(child.id);
+  const total = list.length;
+  const streak = state.streakCount || 0;
+  return `
+  ${streak>0?`<div class="streak-badge">🔥 ${streak} hari berturut-turut mengisi lengkap!</div>`:''}
+  <div class="honesty-banner">
+    <div class="ic">🤲</div>
+    <div class="txt"><b>Sebelum menceklis…</b>Pastikan yang Anda centang benar-benar sudah dikerjakan anak. Kejujuran orang tua adalah teladan pertama bagi kejujuran anak.</div>
+  </div>
+  <div class="section-title">Ceklis Amaliyah Hari Ini (${done}/${total})</div>
+  <div class="card">
+    ${list.length===0?'<div class="empty">Admin belum menambahkan amaliyah untuk kelompok ini.</div>':list.map(t=>{
+      const entry = entries[t.id]; const isDone = !!entry; const photo = entry && entry.photo;
+      return `
+      <div class="task-item">
+        <div class="chk ${isDone?'done':''}" data-toggle-task="${t.id}"></div>
+        <div class="task-label ${isDone?'done':''}">${t.name}</div>
+        ${isDone?`<div class="task-time">${fmtTime(entry.time)}</div>`:''}
+        <label class="cam-btn" title="${photo?'Ganti foto bukti':'Tambah foto bukti'}">
+          ${photo?'📷✓':'📷'}
+          <input type="file" accept="image/*" capture="environment" class="cam-input" data-photo-task="${t.id}">
+        </label>
+        ${photo?`<a href="${photo}" target="_blank" rel="noopener" class="photo-link">Lihat foto</a>`:''}
+      </div>`;
+    }).join('')}
+  </div>
+  <p class="muted" style="margin:-6px 0 0;">Ceklis otomatis dicatat waktunya, dan direset setiap hari.</p>`;
+}
+function renderParentNilai(child){
+  const ym = state.profileMonth || currentYm();
+  const totalHarian = tasksByGroup(child.group).length;
+  let content = '<div class="empty">Memuat nilai bulan ini…</div>';
+  if(state.profileResult && state.profileResult.ym===ym && state.profileResult.row){
+    const row = state.profileResult.row;
+    const letter = gradeLetter(row.pct);
+    const approxDays = totalHarian ? Math.round(row.maxPossible/totalHarian) : 0;
+    content = `
+    ${state.profileResult.isTop?`<div class="teladan-banner">🌟 <b>Selamat!</b> Ananda ${child.name} menjadi Santri Teladan Kelas ${child.group==='banin'?'Banin':'Banat'} bulan ini.</div>`:''}
+    <div class="card grade-card">
+      <div class="grade-letter">${letter}</div>
+      <div class="muted" style="margin-top:4px;">${gradeDesc(letter)}</div>
+      <div style="margin-top:14px;font-size:14px;">${row.pct}% amaliyah terlaksana (${row.doneSum}/${row.maxPossible})</div>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 8px;font-size:14.5px;">Dari mana nilai ini didapat?</h3>
+      <p class="muted" style="margin:0 0 10px;line-height:1.55;">Nilai dihitung dari persentase ceklis amaliyah yang berhasil diisi dibanding total amaliyah yang mungkin diisi selama ${monthLabelId(ym)}.</p>
+      <div class="detail-row"><span>Amaliyah harian ananda</span><b>${totalHarian} item/hari</b></div>
+      <div class="detail-row"><span>Jumlah hari terhitung</span><b>${approxDays} hari</b></div>
+      <div class="detail-row"><span>Total kemungkinan bulan ini</span><b>${row.maxPossible}</b></div>
+      <div class="detail-row"><span>Total yang tercentang</span><b>${row.doneSum}</b></div>
+      <div class="detail-row"><span>Persentase</span><b>${row.pct}%</b></div>
+      <p class="muted" style="margin:10px 0 0;">Skala nilai: A ≥ 90%, B ≥ 75%, C ≥ 60%, D &lt; 60%.</p>
+    </div>`;
+  }
+  return `
+  <div class="section-title">Nilai Bulan Ini</div>
+  <div class="card">
+    <div class="row">
+      <input type="month" id="profileMonthPicker" value="${ym}" style="max-width:200px;">
+      <button class="btn btn-primary" id="loadProfileBtn">Lihat bulan lain</button>
+    </div>
+  </div>
+  ${content}`;
+}
+function renderParentCeklisDanNilai(child){
+  return `
+  ${renderParentCeklis(child)}
+  ${renderParentNilai(child)}`;
+}
+
+function renderParentSaran(child){
+  const mine = state.saranList.filter(s=>s.studentId===child.id);
+  return `
+  <div class="section-title">Kotak Saran &amp; Masukan</div>
+  <div class="card">
+    <p class="muted" style="margin:0 0 12px;line-height:1.55;">Ada saran, masukan, atau hal yang ingin disampaikan ke sekolah terkait ananda <b>${child.name}</b>? Silakan tulis di sini, pesan akan langsung diterima pihak sekolah.</p>
+    <div class="field">
+      <label>Pesan Anda</label>
+      <textarea id="saranMessage" rows="4" placeholder="Tulis saran atau masukan di sini..."></textarea>
+    </div>
+    <button class="btn btn-primary btn-block" id="submitSaranBtn">Kirim</button>
+  </div>
+  <div class="section-title">Riwayat Pesan Anda</div>
+  <div class="card">
+    ${mine.length===0 ? '<div class="empty">Belum ada pesan yang dikirim.</div>' : mine.map(s=>`
+      <div class="saran-item">
+        <div class="muted" style="font-size:12px;">${fmtDateTime(s.createdAt)}</div>
+        <p class="saran-msg">${escapeHtml(s.message).replace(/\n/g,'<br>')}</p>
+      </div>`).join('')}
+  </div>`;
+}
+
+function renderParent(){
+  const group = state.role;
+  if(!state.selectedChildId){
+    const tabs = [['peringkat','Papan Peringkat'],['pilih','Pilih Anak']];
+    const body = state.parentTab==='pilih' ? renderParentPilih(group) : renderPeringkatBlock(group, null);
+    return `
+    ${renderTopbar()}
+    ${renderSidebar(tabs, state.parentTab, 'ptab')}
+    <div class="wrap" style="padding-top:20px;">${body}</div>`;
+  }
+  const child = state.students.find(s=>s.id===state.selectedChildId);
+  if(!child){ state.selectedChildId=null; state.parentTab='peringkat'; return renderParent(); }
+  if(!['ceklis','peringkat','saran'].includes(state.parentTab)) state.parentTab='ceklis';
+  const tabs = [['ceklis','Ceklis & Nilai'],['peringkat','Papan Peringkat'],['saran','Saran & Masukan']];
+  let body='';
+  if(state.parentTab==='ceklis') body = renderParentCeklisDanNilai(child);
+  else if(state.parentTab==='saran') body = renderParentSaran(child);
+  else body = renderPeringkatBlock(group, child.id);
+  return `
+  ${renderTopbar()}
+  ${renderSidebar(tabs, state.parentTab, 'ptab')}
+  <div class="wrap" style="padding-top:20px;">
+    <div class="card row between">
+      <div style="font-weight:600;font-size:15px;">${child.name}</div>
+      <button class="btn btn-ghost btn-sm" id="switchChild">Ganti anak</button>
+    </div>
+    ${body}
+  </div>`;
+}
+function attachParentEvents(){
+  attachSidebarEvents();
+  document.getElementById('logoutBtn').onclick = doLogout;
+  document.querySelectorAll('[data-pick-child]').forEach(el=>{
+    el.onclick = ()=>{
+      state.selectedChildId = el.dataset.pickChild;
+      state.parentTab = 'ceklis';
+      state.profileMonth = currentYm();
+      state.profileResult = null;
+      render();
+      loadProfile(state.students.find(s=>s.id===state.selectedChildId), state.profileMonth);
+    };
+  });
+  const switchBtn = document.getElementById('switchChild');
+  if(switchBtn) switchBtn.onclick = ()=>{ state.selectedChildId=null; state.parentTab='peringkat'; render(); };
+  document.querySelectorAll('[data-ptab]').forEach(el=>{
+    el.onclick = ()=>{
+      state.parentTab = el.dataset.ptab;
+      if(state.parentTab==='ceklis' && state.selectedChildId){
+        const ym = state.profileMonth || currentYm();
+        if(!state.profileResult || state.profileResult.ym!==ym){
+          render();
+          loadProfile(state.students.find(s=>s.id===state.selectedChildId), ym);
+          return;
+        }
+      }
+      render();
+    };
+  });
+  document.querySelectorAll('[data-toggle-task]').forEach(el=>{
+    el.onclick = ()=> toggleTask(state.selectedChildId, el.dataset.toggleTask);
+  });
+  document.querySelectorAll('[data-photo-task]').forEach(el=>{
+    el.onchange = (e)=>{
+      const file = e.target.files[0];
+      if(file) attachTaskPhoto(state.selectedChildId, el.dataset.photoTask, file);
+    };
+  });
+  document.querySelectorAll('[data-pperiod]').forEach(el=>{
+    el.onclick = async ()=>{
+      const period = el.dataset.pperiod;
+      state.peringkatPeriod = period;
+      if(period==='harian'){ render(); return; }
+      if(state.peringkatResult && state.peringkatResult.period===period){ render(); return; }
+      render();
+      const result = period==='mingguan' ? await computeWeekly(mondayOf(todayKey())) : await computeMonthly(currentYm());
+      state.peringkatResult = {period, rows: result.rows};
+      render();
+    };
+  });
+  const loadBtn = document.getElementById('loadProfileBtn');
+  if(loadBtn) loadBtn.onclick = ()=>{
+    const ym = document.getElementById('profileMonthPicker').value;
+    state.profileMonth = ym;
+    const child = state.students.find(s=>s.id===state.selectedChildId);
+    render();
+    loadProfile(child, ym);
+  };
+  const submitSaranBtn = document.getElementById('submitSaranBtn');
+  if(submitSaranBtn) submitSaranBtn.onclick = ()=>{
+    const val = document.getElementById('saranMessage').value;
+    if(!val || !val.trim()) return;
+    submitSaran(state.selectedChildId, val);
+  };
+}
+
+/* ---------------- Boot ---------------- */
+initApp();
+</script>
+</body>
+</html>
