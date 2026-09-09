@@ -20,9 +20,24 @@ semua file di root, tanpa folder `icons/`).
      Pengaturan.
 - `manifest.json` — identitas aplikasi (nama, warna, ikon)
 - `service-worker.js` — auto-update (network-first); versi cache
-  dinaikkan ke `amaliyah-harian-v3` supaya HP yang sudah install
+  dinaikkan ke `amaliyah-harian-v4` supaya HP yang sudah install
   langsung ambil versi baru ini
 - `icon-192.png`, `icon-512.png`, `icon-512-maskable.png` — ikon aplikasi
+
+## Fitur baru: Tanggal Mulai Aplikasi
+Supaya nilai santri tidak terlihat jelek hanya karena hari-hari sebelum
+aplikasi ini dipakai (misalnya aplikasi baru mulai dipakai tanggal 8,
+tapi nilai bulanan dihitung dari tanggal 1), sekarang ada pengaturan
+**Tanggal Mulai Aplikasi** di tab Pengaturan (admin). Hari sebelum
+tanggal itu otomatis dikecualikan dari:
+- Nilai bulanan & mingguan (di tab Nilai admin maupun orang tua)
+- Simulasi proyeksi nilai
+- Papan peringkat bulanan/mingguan
+- Kalender riwayat santri (hari sebelum mulai ditandai abu-abu, bukan
+  "tidak mengisi")
+
+Isi sekali di tab Pengaturan sesuai tanggal sebenarnya sekolah mulai
+memakai aplikasi ini secara aktif.
 
 ## Cara update repo GitHub
 1. Buka repo → upload/replace `index.html`, `manifest.json`, dan

@@ -373,6 +373,7 @@ let state = {
   todayChecklist:{},
   todayUdzur:{},
   schoolCity:'',
+  appStartDate:'',
   ishaInfo:null,
   monthYear:null,
   monthlyResult:null,
@@ -579,6 +580,7 @@ async function initApp(){
   let appScriptUrl = await storeGet('appscript-url');
   let featureFlags = await storeGet('feature-flags');
   let schoolCity = await storeGet('school-city');
+  let appStartDate = await storeGet('app-start-date');
   state.students = students;
   state.tasks = tasks;
   state.credentials = credentials;
@@ -586,6 +588,7 @@ async function initApp(){
   state.appScriptUrl = appScriptUrl || '';
   state.featureFlags = Object.assign({leaderboard:false, photo:false, analytics:false}, featureFlags||{});
   state.schoolCity = schoolCity || 'Jakarta';
+  state.appStartDate = appStartDate || '';
 
   const remembered = await storeGet('remembered-role', false);
   if(remembered && credentials[remembered]){
@@ -686,6 +689,10 @@ async function computeGroupStatsForDates(dateKeys){
   });
   return { totals, maxPossibleByStudent, udzurCounts };
 }
+function clipKeysToAppStart(keys){
+  if(!state.appStartDate) return keys;
+  return keys.filter(k => k >= state.appStartDate); // format YYYY-MM-DD, aman dibandingkan sebagai string
+}
 async function computeMonthly(yearMonth){
   const [year, month] = yearMonth.split('-').map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -694,7 +701,7 @@ async function computeMonthly(yearMonth){
   const lastDay = isCurrent ? now.getDate() : daysInMonth;
   const keys = [];
   for(let d=1; d<=lastDay; d++){ keys.push(`${year}-${pad(month)}-${pad(d)}`); }
-  const { totals, maxPossibleByStudent, udzurCounts } = await computeGroupStatsForDates(keys);
+  const { totals, maxPossibleByStudent, udzurCounts } = await computeGroupStatsForDates(clipKeysToAppStart(keys));
   const rows = state.students.map(s=>{
     const maxPossible = maxPossibleByStudent[s.id]||0;
     const doneSum = totals[s.id]||0;
@@ -728,7 +735,7 @@ async function computeWeekly(mondayIso){
     keys.push(dateKey(d));
   }
   const lastDay = keys.length || 1;
-  const { totals, maxPossibleByStudent, udzurCounts } = await computeGroupStatsForDates(keys);
+  const { totals, maxPossibleByStudent, udzurCounts } = await computeGroupStatsForDates(clipKeysToAppStart(keys));
   const rows = state.students.map(s=>{
     const maxPossible = maxPossibleByStudent[s.id]||0;
     const doneSum = totals[s.id]||0;
@@ -748,11 +755,20 @@ async function computeSimulationBase(studentId){
   const dailyTotal = tasksByGroup(student.group).length || 0;
   const keys = [];
   for(let d=1; d<=lastDay; d++){ keys.push(`${year}-${pad(month)}-${pad(d)}`); }
-  const { totals, maxPossibleByStudent } = await computeGroupStatsForDates(keys);
+  const { totals, maxPossibleByStudent } = await computeGroupStatsForDates(clipKeysToAppStart(keys));
   const doneSum = totals[studentId]||0;
   const maxToDate = maxPossibleByStudent[studentId]||0;
   const pctToDate = maxToDate ? Math.round(doneSum/maxToDate*1000)/10 : 0;
-  const maxPossible = daysInMonth * dailyTotal; // proyeksi penuh sebulan; udzur hari-hari ke depan belum diketahui
+  let effectiveDaysInMonth = daysInMonth;
+  if(state.appStartDate){
+    const startD = new Date(state.appStartDate+'T00:00:00');
+    if(startD.getFullYear()===year && (startD.getMonth()+1)===month){
+      effectiveDaysInMonth = Math.max(0, daysInMonth - startD.getDate() + 1);
+    } else if(startD > new Date(year, month-1, daysInMonth, 23,59,59)){
+      effectiveDaysInMonth = 0; // seluruh bulan ini sebelum aplikasi mulai dipakai
+    }
+  }
+  const maxPossible = effectiveDaysInMonth * dailyTotal; // proyeksi sebulan sejak aplikasi mulai dipakai; udzur hari-hari ke depan belum diketahui
   const remainingDays = daysInMonth - lastDay;
   return { studentId, name: student.name, group: student.group, doneSum, maxToDate, pctToDate, remainingDays, dailyTotal, maxPossible, daysInMonth, lastDay, ym: `${year}-${pad(month)}` };
 }
@@ -922,6 +938,7 @@ async function computeCalendar(studentId, ym, total){
   return keys.map((k,i)=>{
     const dayNum = i+1;
     if(dayNum > lastDay) return { date:k, day:dayNum, status:'future' };
+    if(state.appStartDate && k < state.appStartDate) return { date:k, day:dayNum, status:'before-start' };
     const obj = results[i];
     const doneN = obj && obj[studentId] ? Object.keys(obj[studentId]).length : 0;
     let status;
@@ -1460,6 +1477,7 @@ function renderCalendarGrid(student, calData, ym){
     if(d.status==='full'){ cls='full'; title=`Lengkap (${d.doneN}/${d.total})`; }
     else if(d.status==='partial'){ cls='partial'; title=`Sebagian (${d.doneN}/${d.total})`; }
     else if(d.status==='none'){ cls='none'; title='Tidak mengisi'; }
+    else if(d.status==='before-start'){ cls='future'; title='Sebelum aplikasi mulai digunakan'; }
     cells.push(`<div class="cal-cell ${cls}" title="${title}">${d.day}</div>`);
   });
   return `
@@ -1688,6 +1706,15 @@ function renderAdminSettings(){
       <input type="text" id="schoolCityInput" value="${state.schoolCity||''}" placeholder="Contoh: Jakarta, Bandung, Surabaya">
     </div>
     <button class="btn btn-primary btn-block" id="saveSchoolCityBtn">Simpan Kota</button>
+  </div>
+  <div class="card" style="max-width:440px;">
+    <h3 style="margin-top:0;font-size:16px;">Tanggal Mulai Aplikasi</h3>
+    <p class="muted" style="margin:0 0 12px;line-height:1.55;">Hari sebelum tanggal ini tidak akan dihitung di nilai bulanan/mingguan/simulasi maupun kalender riwayat santri — supaya nilai tidak terlihat jelek hanya karena hari itu aplikasi belum dipakai.</p>
+    <div class="field">
+      <label>Tanggal mulai</label>
+      <input type="date" id="appStartDateInput" value="${state.appStartDate||''}">
+    </div>
+    <button class="btn btn-primary btn-block" id="saveAppStartDateBtn">Simpan Tanggal Mulai</button>
   </div>
   <div class="card" style="max-width:440px;">
     <h3 style="margin-top:0;font-size:16px;">Fitur Tambahan</h3>
@@ -2076,6 +2103,17 @@ function attachAdminEvents(){
       await fetchIshaTime();
       render();
       showToast('Kota sekolah tersimpan');
+    };
+    document.getElementById('saveAppStartDateBtn').onclick = async ()=>{
+      const val = document.getElementById('appStartDateInput').value;
+      state.appStartDate = val || '';
+      await storeSet('app-start-date', state.appStartDate);
+      // hasil nilai/peringkat yang sudah terlanjur dihitung perlu dihitung ulang dengan tanggal mulai baru
+      state.monthlyResult = null;
+      state.peringkatResult = null;
+      state.calendarResult = null;
+      render();
+      showToast(state.appStartDate ? `Tanggal mulai aplikasi disimpan: ${state.appStartDate}` : 'Tanggal mulai aplikasi dikosongkan');
     };
     document.getElementById('saveFeatureFlagsBtn').onclick = async ()=>{
       const flags = {
