@@ -161,6 +161,8 @@
   .list-edit-row .nm{flex:1;font-size:14.5px;}
   .icon-btn{background:transparent;border:none;cursor:pointer;font-size:15px;color:var(--ink-soft);padding:4px 6px;flex-shrink:0;}
   .icon-btn:hover{color:var(--red);}
+  .icon-btn.active{color:var(--teal-dark);opacity:1;}
+  .icon-btn.inactive{opacity:.35;}
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
   th{text-align:left;font-size:11.5px;color:var(--ink-soft);font-weight:700;padding:8px 6px;border-bottom:1px solid var(--line);}
   td{padding:9px 6px;border-bottom:1px solid var(--line);}
@@ -193,20 +195,33 @@ const BADGE_LEVELS = [
 async function computeAchievements(studentId){
   const student = state.students.find(s=>s.id===studentId);
   if(!student) return null;
-  const dailyTotal = tasksByGroup(student.group).length || 0;
+  const groupTasks = tasksByGroup(student.group);
+  const dailyTotal = groupTasks.length || 0;
+  const haidExcludedIds = new Set(groupTasks.filter(t=>t.excludedDuringHaid).map(t=>t.id));
+  const haidExcludedCount = haidExcludedIds.size;
   const completeDateSet = new Set();
   try{
     const snap = await get(ref(db, 'amaliyah'));
     if(snap.exists()){
       const data = snap.val();
+      const udzurDates = new Set();
+      Object.keys(data).forEach(key=>{
+        if(key.indexOf('udzur-')===0 && data[key] && data[key][studentId]){
+          udzurDates.add(key.slice('udzur-'.length));
+        }
+      });
       Object.keys(data).forEach(key=>{
         if(key.indexOf('checklist-')===0 && data[key] && data[key][studentId] && dailyTotal>0){
-          const doneCount = Object.keys(data[key][studentId]).length;
-          if(doneCount>=dailyTotal) completeDateSet.add(key.slice('checklist-'.length));
-        }
-        if(key.indexOf('udzur-')===0 && data[key] && data[key][studentId]){
-          // hari udzur (haid) tidak memutus streak, diperlakukan seperti hari lengkap
-          completeDateSet.add(key.slice('udzur-'.length));
+          const dateStr = key.slice('checklist-'.length);
+          const isUdzurDay = udzurDates.has(dateStr);
+          // hari udzur: amaliyah terkait shalat tidak wajib, jadi target hari itu dikurangi jumlahnya
+          const requiredCount = isUdzurDay ? Math.max(0, dailyTotal - haidExcludedCount) : dailyTotal;
+          let doneCount = 0;
+          Object.keys(data[key][studentId]).forEach(taskId=>{
+            if(isUdzurDay && haidExcludedIds.has(taskId)) return; // jaga-jaga, tidak dihitung
+            doneCount++;
+          });
+          if(requiredCount===0 || doneCount>=requiredCount) completeDateSet.add(dateStr);
         }
       });
     }
@@ -607,10 +622,19 @@ function doneEntries(studentId){ return state.todayChecklist[studentId] || {}; }
 function doneCount(studentId){ return Object.keys(doneEntries(studentId)).length; }
 
 function rankList(group){
-  const total = tasksByGroup(group).length;
+  const groupTasks = tasksByGroup(group);
+  const total = groupTasks.length;
+  const haidExcludedIds = new Set(groupTasks.filter(t=>t.excludedDuringHaid).map(t=>t.id));
+  const haidExcludedCount = haidExcludedIds.size;
   const list = studentsByGroup(group).map(s=>{
-    const done = doneCount(s.id);
-    return {...s, done, total, pct: total? done/total:0};
+    const isUdzur = !!state.todayUdzur[s.id];
+    const effectiveTotal = isUdzur ? Math.max(0, total - haidExcludedCount) : total;
+    let done = 0;
+    Object.keys(doneEntries(s.id)).forEach(taskId=>{
+      if(isUdzur && haidExcludedIds.has(taskId)) return; // jaga-jaga
+      done++;
+    });
+    return {...s, done, total: effectiveTotal, pct: effectiveTotal? done/effectiveTotal:0};
   });
   list.sort((a,b)=> b.pct-a.pct || b.done-a.done || a.name.localeCompare(b.name));
   return list;
@@ -626,22 +650,41 @@ async function computeGroupStatsForDates(dateKeys){
     Promise.all(dateKeys.map(k=> storeGet(checklistKey(k)))),
     Promise.all(dateKeys.map(k=> storeGet(udzurKey(k))))
   ]);
-  const totals = {};
+  const totals = {}; // doneSum per santri
+  const maxPossibleByStudent = {}; // maxPossible per santri (dibangun harian)
   const udzurCounts = {};
-  state.students.forEach(s=>{ totals[s.id]=0; udzurCounts[s.id]=0; });
+  state.students.forEach(s=>{ totals[s.id]=0; maxPossibleByStudent[s.id]=0; udzurCounts[s.id]=0; });
+
+  const groupTaskInfo = {};
+  ['banin','banat'].forEach(g=>{
+    const list = tasksByGroup(g);
+    groupTaskInfo[g] = {
+      total: list.length,
+      haidExcludedIds: new Set(list.filter(t=>t.excludedDuringHaid).map(t=>t.id)),
+      haidExcludedCount: list.filter(t=>t.excludedDuringHaid).length
+    };
+  });
+
   dateKeys.forEach((k, i)=>{
     const checklistObj = checklistResults[i] || {};
     const udzurObj = udzurResults[i] || {};
-    Object.keys(udzurObj).forEach(sid=>{
-      if(udzurObj[sid]){ udzurCounts[sid] = (udzurCounts[sid]||0) + 1; }
-    });
-    Object.keys(checklistObj).forEach(sid=>{
-      if(udzurObj[sid]) return; // hari udzur tidak dihitung sama sekali (tidak menambah doneSum ataupun maxPossible)
-      if(totals[sid]===undefined) totals[sid]=0;
-      totals[sid] += Object.keys(checklistObj[sid]||{}).length;
+    state.students.forEach(s=>{
+      const info = groupTaskInfo[s.group] || {total:0, haidExcludedIds:new Set(), haidExcludedCount:0};
+      const isUdzurThisDay = !!udzurObj[s.id];
+      if(isUdzurThisDay) udzurCounts[s.id] = (udzurCounts[s.id]||0) + 1;
+      // hari udzur: amaliyah terkait shalat tidak ikut dihitung; amaliyah lain tetap dihitung normal
+      const dayMax = isUdzurThisDay ? Math.max(0, info.total - info.haidExcludedCount) : info.total;
+      maxPossibleByStudent[s.id] += dayMax;
+      const entries = (checklistObj[s.id]) || {};
+      let dayDone = 0;
+      Object.keys(entries).forEach(taskId=>{
+        if(isUdzurThisDay && info.haidExcludedIds.has(taskId)) return; // jaga-jaga: jangan hitung amaliyah shalat yang entah kenapa tercentang saat udzur
+        dayDone++;
+      });
+      totals[s.id] += dayDone;
     });
   });
-  return { totals, udzurCounts };
+  return { totals, maxPossibleByStudent, udzurCounts };
 }
 async function computeMonthly(yearMonth){
   const [year, month] = yearMonth.split('-').map(Number);
@@ -651,11 +694,9 @@ async function computeMonthly(yearMonth){
   const lastDay = isCurrent ? now.getDate() : daysInMonth;
   const keys = [];
   for(let d=1; d<=lastDay; d++){ keys.push(`${year}-${pad(month)}-${pad(d)}`); }
-  const { totals, udzurCounts } = await computeGroupStatsForDates(keys);
+  const { totals, maxPossibleByStudent, udzurCounts } = await computeGroupStatsForDates(keys);
   const rows = state.students.map(s=>{
-    const total = tasksByGroup(s.group).length;
-    const effectiveDays = Math.max(0, lastDay - (udzurCounts[s.id]||0));
-    const maxPossible = effectiveDays * (total||1);
+    const maxPossible = maxPossibleByStudent[s.id]||0;
     const doneSum = totals[s.id]||0;
     const pct = maxPossible ? Math.round(doneSum/maxPossible*1000)/10 : 0;
     return {...s, doneSum, maxPossible, pct, udzurDays: udzurCounts[s.id]||0};
@@ -687,11 +728,9 @@ async function computeWeekly(mondayIso){
     keys.push(dateKey(d));
   }
   const lastDay = keys.length || 1;
-  const { totals, udzurCounts } = await computeGroupStatsForDates(keys);
+  const { totals, maxPossibleByStudent, udzurCounts } = await computeGroupStatsForDates(keys);
   const rows = state.students.map(s=>{
-    const total = tasksByGroup(s.group).length;
-    const effectiveDays = Math.max(0, lastDay - (udzurCounts[s.id]||0));
-    const maxPossible = effectiveDays * (total||1);
+    const maxPossible = maxPossibleByStudent[s.id]||0;
     const doneSum = totals[s.id]||0;
     const pct = maxPossible ? Math.round(doneSum/maxPossible*1000)/10 : 0;
     return {...s, doneSum, maxPossible, pct, udzurDays: udzurCounts[s.id]||0};
@@ -709,12 +748,11 @@ async function computeSimulationBase(studentId){
   const dailyTotal = tasksByGroup(student.group).length || 0;
   const keys = [];
   for(let d=1; d<=lastDay; d++){ keys.push(`${year}-${pad(month)}-${pad(d)}`); }
-  const { totals, udzurCounts } = await computeGroupStatsForDates(keys);
+  const { totals, maxPossibleByStudent } = await computeGroupStatsForDates(keys);
   const doneSum = totals[studentId]||0;
-  const effectiveLastDay = Math.max(0, lastDay - (udzurCounts[studentId]||0));
-  const maxToDate = effectiveLastDay * dailyTotal;
+  const maxToDate = maxPossibleByStudent[studentId]||0;
   const pctToDate = maxToDate ? Math.round(doneSum/maxToDate*1000)/10 : 0;
-  const maxPossible = daysInMonth * dailyTotal;
+  const maxPossible = daysInMonth * dailyTotal; // proyeksi penuh sebulan; udzur hari-hari ke depan belum diketahui
   const remainingDays = daysInMonth - lastDay;
   return { studentId, name: student.name, group: student.group, doneSum, maxToDate, pctToDate, remainingDays, dailyTotal, maxPossible, daysInMonth, lastDay, ym: `${year}-${pad(month)}` };
 }
@@ -973,12 +1011,13 @@ function isIshaTimeReached(){
   return now >= ishaDate;
 }
 async function toggleTask(studentId, taskId){
-  if(state.todayUdzur[studentId]) return; // hari ini ditandai udzur, ceklis tidak aktif
+  const task = state.tasks.find(t=>t.id===taskId);
+  if(!task) return;
+  if(state.todayUdzur[studentId] && task.excludedDuringHaid) return; // amaliyah terkait shalat, dikecualikan saat udzur hari ini
   const entries = {...(state.todayChecklist[studentId]||{})};
   const isDone = !!entries[taskId];
   if(!isDone){
-    const task = state.tasks.find(t=>t.id===taskId);
-    if(task && task.lockUntilIsya && !isIshaTimeReached()){
+    if(task.lockUntilIsya && !isIshaTimeReached()){
       showToast(`Belum masuk waktu Isya${state.ishaInfo && state.ishaInfo.time ? ' (±'+state.ishaInfo.time+')' : ''}, ceklis ini belum bisa diisi`);
       return;
     }
@@ -1144,6 +1183,14 @@ async function toggleTaskLockIsya(id){
   render();
   showToast(t.lockUntilIsya ? 'Amaliyah dikunci hingga waktu Isya' : 'Kunci waktu Isya dinonaktifkan');
 }
+async function toggleTaskHaidExclude(id){
+  const t = state.tasks.find(x=>x.id===id);
+  if(!t) return;
+  t.excludedDuringHaid = !t.excludedDuringHaid;
+  await storeSet('tasks', state.tasks);
+  render();
+  showToast(t.excludedDuringHaid ? 'Amaliyah ditandai terkait shalat (dikecualikan saat udzur haid)' : 'Amaliyah tidak lagi dikecualikan saat udzur haid');
+}
 async function saveCredentialsAction(newCreds){
   state.credentials = newCreds;
   await storeSet('credentials', newCreds);
@@ -1272,10 +1319,13 @@ function renderTodayRow(s,i){
 function renderDetailPanel(s){
   const entries = doneEntries(s.id);
   const list = tasksByGroup(s.group);
+  const isUdzur = !!state.todayUdzur[s.id];
   return `<div class="detail-panel">
     ${list.length===0?'<div class="muted">Belum ada amaliyah untuk kelompok ini.</div>':list.map(t=>{
       const entry = entries[t.id];
-      return `<div class="detail-row"><span>${t.name}</span><b>${entry?fmtTime(entry.time):'Belum'}${entry&&entry.photo?` · <a href="${entry.photo}" target="_blank" rel="noopener">Lihat foto</a>`:''}</b></div>`;
+      const isHaidExcluded = isUdzur && t.excludedDuringHaid;
+      const status = isHaidExcluded ? 'Udzur (haid)' : (entry?fmtTime(entry.time):'Belum');
+      return `<div class="detail-row"><span>${t.name}</span><b>${status}${entry&&entry.photo?` · <a href="${entry.photo}" target="_blank" rel="noopener">Lihat foto</a>`:''}</b></div>`;
     }).join('')}
   </div>`;
 }
@@ -1387,8 +1437,9 @@ function renderAdminTasks(){
         }
         return `
         <div class="list-edit-row">
-          <div class="nm">${t.name}${t.lockUntilIsya?'<div class="muted" style="font-size:12px;">🔒 Terkunci hingga waktu Isya</div>':''}</div>
+          <div class="nm">${t.name}${t.lockUntilIsya?'<div class="muted" style="font-size:12px;">🔒 Terkunci hingga waktu Isya</div>':''}${(g==='banat'&&t.excludedDuringHaid)?'<div class="muted" style="font-size:12px;">🕌 Terkait shalat — dikecualikan saat udzur haid</div>':''}</div>
           <button class="icon-btn" data-lock-task="${t.id}" title="${t.lockUntilIsya?'Nonaktifkan kunci waktu Isya':'Kunci amaliyah ini sampai waktu Isya masuk (berdasar jadwal shalat kota sekolah)'}">${t.lockUntilIsya?'🔒':'🔓'}</button>
+          ${g==='banat'?`<button class="icon-btn ${t.excludedDuringHaid?'active':'inactive'}" data-haid-task="${t.id}" title="${t.excludedDuringHaid?'Batalkan: amaliyah ini tidak lagi dikecualikan saat udzur haid':'Tandai amaliyah ini terkait shalat, supaya dikecualikan otomatis saat santri udzur (haid)'}">🕌</button>`:''}
           <button class="icon-btn" data-edit-task="${t.id}">✎</button>
           <button class="icon-btn" data-del-task="${t.id}">✕</button>
         </div>`;
@@ -1815,6 +1866,7 @@ function attachAdminEvents(){
     });
     document.querySelectorAll('[data-del-task]').forEach(el=>{ el.onclick = ()=> deleteTask(el.dataset.delTask); });
     document.querySelectorAll('[data-lock-task]').forEach(el=>{ el.onclick = ()=> toggleTaskLockIsya(el.dataset.lockTask); });
+    document.querySelectorAll('[data-haid-task]').forEach(el=>{ el.onclick = ()=> toggleTaskHaidExclude(el.dataset.haidTask); });
   }
   if(state.adminTab==='monthly'){
     const periodSelect = document.getElementById('recapPeriodSelect');
@@ -2120,32 +2172,27 @@ function renderParentPilih(group){
 function renderParentCeklis(child){
   const list = tasksByGroup(child.group);
   const entries = doneEntries(child.id);
-  const done = doneCount(child.id);
-  const total = list.length;
   const streak = state.streakCount || 0;
   const isUdzur = !!state.todayUdzur[child.id];
   const ishaReached = isIshaTimeReached();
   const ishaLabel = (state.ishaInfo && state.ishaInfo.date===todayKey() && state.ishaInfo.time) ? state.ishaInfo.time : null;
 
+  const effectiveList = isUdzur ? list.filter(t=>!t.excludedDuringHaid) : list;
+  const done = effectiveList.filter(t=> !!entries[t.id]).length;
+  const total = effectiveList.length;
+
   const udzurToggle = child.group==='banat' ? `
   <div class="card" style="margin-bottom:14px;">
     <label class="check-row" for="udzurToggle">
       <input type="checkbox" id="udzurToggle" ${isUdzur?'checked':''}>
-      <span>Tandai udzur (haid) hari ini — ceklis amaliyah tidak perlu diisi dan tidak memengaruhi nilai bulanan</span>
+      <span>Tandai udzur (haid) hari ini — amaliyah terkait shalat tidak perlu diisi dan tidak memengaruhi nilai; amaliyah lain tetap perlu diisi seperti biasa</span>
     </label>
   </div>` : '';
-
-  if(isUdzur){
-    return `
-    ${udzurToggle}
-    <div class="card">
-      <div class="empty">🤲 Hari ini ditandai udzur (haid). Ceklis amaliyah tidak perlu diisi dan tidak dihitung dalam nilai bulanan ananda.</div>
-    </div>`;
-  }
 
   return `
   ${streak>0?`<div class="streak-badge">🔥 ${streak} hari berturut-turut mengisi lengkap!</div>`:''}
   ${udzurToggle}
+  ${isUdzur?`<div class="card" style="margin-bottom:14px;"><div class="empty">🤲 Hari ini ditandai udzur (haid). Amaliyah terkait shalat ditandai "Udzur" di bawah dan tidak dihitung dalam nilai; amaliyah lain tetap perlu diisi seperti biasa.</div></div>`:''}
   <div class="honesty-banner">
     <div class="ic">🤲</div>
     <div class="txt"><b>Sebelum menceklis…</b>Pastikan yang Anda centang benar-benar sudah dikerjakan anak. Kejujuran orang tua adalah teladan pertama bagi kejujuran anak.</div>
@@ -2153,6 +2200,14 @@ function renderParentCeklis(child){
   <div class="section-title">Ceklis Amaliyah Hari Ini (${done}/${total})</div>
   <div class="card">
     ${list.length===0?'<div class="empty">Admin belum menambahkan amaliyah untuk kelompok ini.</div>':list.map(t=>{
+      const isHaidExcluded = isUdzur && t.excludedDuringHaid;
+      if(isHaidExcluded){
+        return `
+        <div class="task-item">
+          <div class="chk locked" title="Udzur (haid) — tidak perlu diisi hari ini">🤲</div>
+          <div class="task-label">${t.name}<div class="muted" style="font-size:12px;margin-top:2px;">Udzur (haid) — tidak dihitung hari ini</div></div>
+        </div>`;
+      }
       const entry = entries[t.id]; const isDone = !!entry; const photo = entry && entry.photo;
       const locked = !isDone && t.lockUntilIsya && !ishaReached;
       return `

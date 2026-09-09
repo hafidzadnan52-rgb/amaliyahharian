@@ -1,6 +1,6 @@
 // Naikkan angka versi ini SETIAP KALI kamu push perubahan besar ke GitHub,
 // supaya HP pengguna lama membuang cache lama dan mengambil yang baru.
-const CACHE_NAME = 'amaliyah-harian-v2';
+const CACHE_NAME = 'amaliyah-harian-v3';
 
 const CORE_FILES = [
   './',
