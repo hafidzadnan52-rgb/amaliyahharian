@@ -149,6 +149,24 @@
 
   .pill{display:inline-block;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:600;}
   .pill.teal{background:var(--teal-soft);color:var(--teal-dark);}
+  .pill.gA{background:var(--teal-soft);color:var(--teal-dark);}
+  .pill.gB{background:#EAF3DC;color:#3f5f1c;}
+  .pill.gC{background:var(--gold-soft);color:#6b4f0f;}
+  .pill.gD{background:var(--red-soft);color:var(--red);}
+  .grade-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 10px;}
+  .grade-box{text-align:center;border-radius:var(--radius-s);padding:10px 4px;border:1px solid var(--line);}
+  .grade-box .gl{font-family:'Fraunces',serif;font-size:26px;font-weight:700;line-height:1;}
+  .grade-box .gn{font-size:18px;font-weight:700;margin-top:4px;}
+  .grade-box .gr{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+  .grade-box.gA{background:var(--teal-soft);} .grade-box.gB{background:#EAF3DC;}
+  .grade-box.gC{background:var(--gold-soft);} .grade-box.gD{background:var(--red-soft);}
+  .amal-box{border-radius:var(--radius-s);padding:12px 14px;margin-bottom:10px;border:1px solid var(--line);}
+  .amal-box h4{margin:0 0 6px;font-size:13.5px;}
+  .amal-box ol,.amal-box ul{margin:0;padding-left:20px;font-size:13.5px;line-height:1.6;}
+  .amal-box.good{background:var(--teal-soft);border-color:var(--teal);}
+  .amal-box.warn{background:var(--gold-soft);border-color:#E3CE8C;}
+  .amal-box.bad{background:var(--red-soft);border-color:var(--red);}
+  .scroll-x{overflow-x:auto;}
 
   .empty{text-align:center;padding:26px 10px;color:var(--ink-soft);font-size:14px;}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--teal-dark);color:#fff;padding:10px 20px;border-radius:100px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:50;}
@@ -407,7 +425,10 @@ function showToast(msg){
   clearTimeout(showToast._tm);
   showToast._tm = setTimeout(()=>t.classList.remove('show'),1800);
 }
-function gradeLetter(pct){ if(pct>=90) return 'A'; if(pct>=75) return 'B'; if(pct>=60) return 'C'; return 'D'; }
+// Skala nilai: A = 86–100%, B = 71–85%, C = 51–70%, D = 0–50%
+function gradeLetter(pct){ const p=Math.round(Number(pct)||0); if(p>=86) return 'A'; if(p>=71) return 'B'; if(p>=51) return 'C'; return 'D'; }
+const GRADE_SCALE_TEXT = 'Skala nilai: A = 86–100%, B = 71–85%, C = 51–70%, D = 0–50%.';
+const GRADE_RANGE = {A:'86–100%', B:'71–85%', C:'51–70%', D:'0–50%'};
 function gradeDesc(letter){
   if(letter==='A') return 'Sangat Rajin';
   if(letter==='B') return 'Rajin';
@@ -517,7 +538,7 @@ function buildAdminWeeklyWaReport(rows, mondayIso){
   lines.push(waClosing());
   return lines.join('\n');
 }
-function buildStudentWaReport(student, row, period, periodValue){
+function buildStudentWaReport(student, row, period, periodValue, detail){
   const label = period==='mingguan' ? weekRangeLabel(periodValue) : monthLabelId(periodValue);
   const periodWord = period==='mingguan' ? 'minggu' : 'bulan';
   const lines = [];
@@ -530,6 +551,26 @@ function buildStudentWaReport(student, row, period, periodValue){
   if(row){
     const letter = gradeLetter(row.pct);
     lines.push(`Ananda ${student.name} telah menyelesaikan ${row.doneSum}/${row.maxPossible} amaliyah harian selama ${periodWord} ${label} (${row.pct}%), dengan predikat ${letter} (${gradeDesc(letter)}).`);
+    const dl = deltaOf(row);
+    if(dl!==null && state.prevResult){
+      lines.push(`Dibanding ${state.prevResult.label}, capaian ananda ${dl>0?'naik':(dl<0?'turun':'tetap')}${dl!==0?' '+Math.abs(dl)+' poin':''}.`);
+    }
+    if(detail && detail.length){
+      const c = classifyAmal(detail);
+      lines.push('');
+      if(c.most.length){
+        lines.push('✅ Amaliyah yang paling sering dilakukan:');
+        c.most.forEach((t,i)=> lines.push(`   ${i+1}. ${t.name} (${t.pct}%)`));
+      }
+      if(c.least.length){
+        lines.push('⚠️ Amaliyah yang paling jarang dilakukan:');
+        c.least.forEach((t,i)=> lines.push(`   ${i+1}. ${t.name} (${t.pct}%)`));
+      }
+      if(c.never.length){
+        lines.push('❌ Amaliyah yang belum pernah dilakukan:');
+        c.never.forEach(t=> lines.push(`   - ${t.name}`));
+      }
+    }
   } else {
     lines.push(`Belum ada data amaliyah untuk ananda ${student.name} pada ${periodWord} ${label}.`);
   }
@@ -816,51 +857,431 @@ async function computeGaleriFoto(ym){
   photos.sort((a,b)=> (b.time||b.date||'').localeCompare(a.time||a.date||''));
   return photos;
 }
-function exportRecapExcel(rows, period, label){
-  if(typeof XLSX==='undefined'){ showToast('Modul Excel gagal dimuat, cek koneksi internet'); return; }
-  const data = rows.map((r,i)=>({
-    'No': i+1,
-    'Nama': r.name,
-    'Kelompok': r.group==='banin'?'Banin':'Banat',
-    'Selesai': `${r.doneSum}/${r.maxPossible}`,
-    'Persentase': r.pct,
-    'Nilai': gradeLetter(r.pct)
-  }));
-  const ws = XLSX.utils.json_to_sheet(data);
-  ws['!cols'] = [{wch:4},{wch:24},{wch:10},{wch:10},{wch:12},{wch:8}];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Rekap');
-  const filename = `rekap-amaliyah-${period==='bulanan'?label:'mingguan-'+label}.xlsx`;
-  XLSX.writeFile(wb, filename);
-  showToast('File Excel diunduh');
+/* ---------------- Detail persentase amaliyah per santri ---------------- */
+async function computeAmalDetail(keys){
+  const [chk, udz] = await Promise.all([
+    Promise.all(keys.map(k=> storeGet(checklistKey(k)))),
+    Promise.all(keys.map(k=> storeGet(udzurKey(k))))
+  ]);
+  const perStudent = {}, daily = {}, streak = {};
+  // hari "aktif" = minimal ada satu santri yang mengisi (hari libur / tanpa isian sama sekali tidak dihitung)
+  const active = keys.map((k,i)=> state.students.some(s=> Object.keys(((chk[i]||{})[s.id])||{}).length>0));
+  const today = todayKey();
+  state.students.forEach(s=>{
+    const tasks = tasksByGroup(s.group);
+    const rec = {};
+    tasks.forEach(t=>{ rec[t.id] = { id:t.id, name:t.name, done:0, maxDays:0 }; });
+    daily[s.id] = [];
+    keys.forEach((k,i)=>{
+      const udzur = !!((udz[i]||{})[s.id]);
+      const entries = ((chk[i]||{})[s.id]) || {};
+      let dayDone = 0, dayReq = 0;
+      tasks.forEach(t=>{
+        if(udzur && t.excludedDuringHaid) return; // hari udzur: amaliyah shalat tidak wajib
+        dayReq++; rec[t.id].maxDays++;
+        if(Object.prototype.hasOwnProperty.call(entries, t.id)){ rec[t.id].done++; dayDone++; }
+      });
+      daily[s.id].push({ date:k, done:dayDone, req:dayReq, udzur, active:active[i] });
+    });
+    perStudent[s.id] = Object.values(rec).map(t=>({
+      ...t, pct: t.maxDays ? Math.round(t.done/t.maxDays*1000)/10 : 0
+    }));
+    // berapa hari aktif terakhir berturut-turut santri ini tidak mengisi apa pun (hari ini tidak dihitung)
+    let st = 0;
+    for(let i=keys.length-1;i>=0;i--){
+      if(keys[i]===today) continue;
+      if(!active[i]) continue;
+      const d = daily[s.id][i];
+      if(d.req===0) continue;
+      if(d.done===0) st++; else break;
+    }
+    streak[s.id] = st;
+  });
+  return { perStudent, daily, streak, keys, active, days: keys.length };
 }
-function printRecapPdf(rows, periodLabel){
-  const rowsHtml = rows.map((r,i)=>`
-    <tr>
-      <td>${i+1}</td><td>${r.name}</td><td>${r.group==='banin'?'Banin':'Banat'}</td>
-      <td>${r.doneSum}/${r.maxPossible}</td><td>${r.pct}%</td><td>${gradeLetter(r.pct)}</td>
-    </tr>`).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>Rekap Amaliyah Harian — ${periodLabel}</title>
-    <style>
-      body{font-family:Arial,sans-serif;padding:24px;color:#20291F;}
-      h1{font-size:18px;margin:0 0 2px;}
-      p{margin:0 0 16px;color:#555;font-size:13px;}
-      table{width:100%;border-collapse:collapse;font-size:13px;}
-      th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;}
-      th{background:#EAE6D6;}
-    </style>
-    </head><body>
-    <h1>${SCHOOL_NAME}</h1>
-    <p>Rekap Amaliyah Harian — ${periodLabel}</p>
-    <table><tr><th>#</th><th>Nama</th><th>Kelompok</th><th>Selesai</th><th>%</th><th>Nilai</th></tr>${rowsHtml}</table>
-    </body></html>`;
+function classifyAmal(list){
+  const withData = list.filter(t=>t.maxDays>0);
+  const never = withData.filter(t=>t.done===0).sort((a,b)=>a.name.localeCompare(b.name));
+  const active = withData.filter(t=>t.done>0).sort((a,b)=> b.pct-a.pct || a.name.localeCompare(b.name));
+  const most = active.slice(0,3);
+  const least = active.slice(3).sort((a,b)=> a.pct-b.pct || a.name.localeCompare(b.name)).slice(0,3);
+  return { most, least, never };
+}
+function aggregateAmal(group, detail){
+  const map = {};
+  state.students.filter(s=>s.group===group).forEach(s=>{
+    ((detail && detail.perStudent[s.id]) || []).forEach(t=>{
+      const m = map[t.id] || (map[t.id] = { id:t.id, name:t.name, done:0, maxDays:0, students:0, studentsNever:0 });
+      m.done += t.done; m.maxDays += t.maxDays; m.students++;
+      if(t.maxDays>0 && t.done===0) m.studentsNever++;
+    });
+  });
+  return Object.values(map).map(m=>({ ...m, pct: m.maxDays ? Math.round(m.done/m.maxDays*1000)/10 : 0 }))
+    .sort((a,b)=> b.pct-a.pct || a.name.localeCompare(b.name));
+}
+function gradeDistribution(rows){
+  const d = {A:0,B:0,C:0,D:0};
+  rows.forEach(r=>{ d[gradeLetter(r.pct)]++; });
+  return d;
+}
+function gradePill(pct){ const g = gradeLetter(pct); return `<span class="pill g${g}">${pct}% (${g})</span>`; }
+function fmtAmalList(list){ return list.length ? list.map(t=>`${t.name} (${t.pct}%)`).join(', ') : '-'; }
+
+/* ---------------- Perbandingan antarperiode ---------------- */
+const ATTENTION_DROP = 10;   // turun >= 10 poin dibanding periode lalu
+const ATTENTION_STREAK = 3;  // tidak mengisi >= 3 hari aktif berturut-turut
+const ATTENTION_CRITERIA = `Kriteria: nilai D, atau turun ≥ ${ATTENTION_DROP} poin dari periode sebelumnya, atau tidak mengisi ≥ ${ATTENTION_STREAK} hari aktif berturut-turut. Hari saat tidak ada satu pun santri mengisi (mis. libur) dan hari ini tidak dihitung.`;
+function round1(x){ return Math.round(x*10)/10; }
+function prevPeriodValue(period, value){
+  if(period==='bulanan'){
+    const [y,m] = value.split('-').map(Number);
+    const d = new Date(y, m-2, 1);
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+  }
+  const d = new Date(value+'T00:00:00'); d.setDate(d.getDate()-7);
+  return dateKey(d);
+}
+async function computePrevious(period, value){
+  const pv = prevPeriodValue(period, value);
+  const res = period==='bulanan' ? await computeMonthly(pv) : await computeWeekly(pv);
+  const label = period==='bulanan' ? monthLabelId(pv) : weekRangeLabel(pv);
+  const map = {};
+  res.rows.forEach(r=>{ map[r.id] = r; });
+  return { rows: res.rows, map, label, period };
+}
+function deltaOf(row){
+  const pr = state.prevResult;
+  const prev = pr && pr.map[row.id];
+  if(!prev || !prev.maxPossible || !row.maxPossible) return null;
+  return round1(row.pct - prev.pct);
+}
+function groupAvg(rows, group){
+  const list = rows.filter(r=>r.group===group && r.maxPossible>0);
+  if(!list.length) return null;
+  return round1(list.reduce((a,r)=>a+r.pct,0)/list.length);
+}
+function compareInfo(rows, group){
+  const cur = groupAvg(rows, group);
+  const prev = state.prevResult ? groupAvg(state.prevResult.rows, group) : null;
+  const delta = (cur!==null && prev!==null) ? round1(cur-prev) : null;
+  return { cur, prev, delta };
+}
+function deltaPlain(d){
+  if(d===null || d===undefined) return '–';
+  if(d>0) return `▲ ${d}`;
+  if(d<0) return `▼ ${Math.abs(d)}`;
+  return '▬ 0';
+}
+function fmtDelta(d){
+  if(d===null || d===undefined) return '<span class="muted">–</span>';
+  if(d>0) return `<span style="color:var(--teal-dark);font-weight:700;">▲ ${d}</span>`;
+  if(d<0) return `<span style="color:var(--red);font-weight:700;">▼ ${Math.abs(d)}</span>`;
+  return '<span class="muted">▬ 0</span>';
+}
+
+/* ---------------- Santri yang perlu pendampingan ---------------- */
+function computeAttention(rows){
+  const out = [];
+  const pr = state.prevResult;
+  rows.forEach(r=>{
+    if(!r.maxPossible) return;
+    const reasons = [];
+    if(gradeLetter(r.pct)==='D') reasons.push({ k:'D', t:`Nilai D (${r.pct}%)` });
+    const d = deltaOf(r);
+    if(d!==null && d<=-ATTENTION_DROP) reasons.push({ k:'drop', t:`Turun ${Math.abs(d)} poin dari ${pr.label}` });
+    const st = (state.amalDetail && state.amalDetail.streak && state.amalDetail.streak[r.id]) || 0;
+    if(st>=ATTENTION_STREAK) reasons.push({ k:'streak', t:`Tidak mengisi ${st} hari berturut-turut` });
+    if(reasons.length) out.push({ row:r, reasons });
+  });
+  out.sort((a,b)=> b.reasons.length-a.reasons.length || a.row.pct-b.row.pct || a.row.name.localeCompare(b.row.name));
+  return out;
+}
+
+/* ---------------- Tren per santri ---------------- */
+function poolSeries(detail, sids, mode){
+  const byKey = {};
+  sids.forEach(sid=>{
+    ((detail && detail.daily && detail.daily[sid]) || []).forEach(d=>{
+      if(!d.active || d.req<=0) return;
+      const key = mode==='weekly' ? mondayOf(d.date) : d.date;
+      const o = byKey[key] || (byKey[key] = { date:key, done:0, req:0 });
+      o.done += d.done; o.req += d.req;
+    });
+  });
+  return Object.values(byKey).sort((a,b)=>a.date.localeCompare(b.date))
+    .map(o=>({ date:o.date, pct: round1(o.done/o.req*100) }));
+}
+function trendSummary(series){
+  if(series.length<4) return null;
+  const half = Math.floor(series.length/2);
+  const avg = (a)=> a.reduce((x,s)=>x+s.pct,0)/a.length;
+  const first = round1(avg(series.slice(0,half)));
+  const last = round1(avg(series.slice(series.length-half)));
+  const diff = round1(last-first);
+  return { first, last, diff, label: diff>=5 ? 'Cenderung naik' : (diff<=-5 ? 'Cenderung menurun' : 'Relatif stabil') };
+}
+const CHART_APP = { line:'var(--teal-dark)', dot:'var(--teal)', group:'var(--gold)', grid:'var(--line)', text:'var(--ink-soft)' };
+const CHART_PRINT = { line:'#1B4438', dot:'#2F6F5E', group:'#B98C1F', grid:'#DCD5BE', text:'#5B6357' };
+function renderStudentTrendChart(series, groupSeries, C, groupName, mode){
+  const n = series.length;
+  if(n===0) return '<div class="empty">Belum ada data harian untuk periode ini.</div>';
+  const w=600, h=230, padL=36, padR=12, padT=14, padB=24;
+  const plotW = w-padL-padR, plotH = h-padT-padB;
+  const xFor = (i)=> padL + (n<=1 ? plotW/2 : (i/(n-1))*plotW);
+  const yFor = (pct)=> padT + plotH - (Math.max(0,Math.min(100,pct))/100)*plotH;
+  const path = (pts)=> pts.map((p,k)=>`${k===0?'M':'L'}${xFor(p.i).toFixed(1)},${yFor(p.pct).toFixed(1)}`).join(' ');
+  const gmap = {}; (groupSeries||[]).forEach(g=>{ gmap[g.date] = g.pct; });
+  const gpts = series.map((s,i)=> gmap[s.date]===undefined ? null : { i, pct:gmap[s.date] }).filter(Boolean);
+  const spts = series.map((s,i)=>({ i, pct:s.pct }));
+  const grid = [0,50,70,85,100].map(v=>`
+    <line x1="${padL}" y1="${yFor(v).toFixed(1)}" x2="${w-padR}" y2="${yFor(v).toFixed(1)}" stroke="${C.grid}" stroke-width="1" ${v===50||v===70||v===85?'stroke-dasharray="3 3"':''}/>
+    <text x="${padL-6}" y="${(yFor(v)+3.5).toFixed(1)}" font-size="10" fill="${C.text}" text-anchor="end">${v}%</text>`).join('');
+  const sh = (iso)=>{ const p=iso.split('-'); return `${p[2]}/${p[1]}`; };
+  const dots = n<=35 ? spts.map(p=>`<circle cx="${xFor(p.i).toFixed(1)}" cy="${yFor(p.pct).toFixed(1)}" r="3" fill="${C.dot}"/>`).join('') : '';
+  return `
+  <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;">
+    ${grid}
+    ${gpts.length>1 ? `<path d="${path(gpts)}" fill="none" stroke="${C.group}" stroke-width="2" stroke-dasharray="5 4"/>` : ''}
+    ${n>1 ? `<path d="${path(spts)}" fill="none" stroke="${C.line}" stroke-width="2.5"/>` : ''}
+    ${dots}
+    <text x="${padL}" y="${h-6}" font-size="10" fill="${C.text}">${sh(series[0].date)}</text>
+    <text x="${w-padR}" y="${h-6}" font-size="10" fill="${C.text}" text-anchor="end">${sh(series[n-1].date)}</text>
+  </svg>
+  <div class="row" style="gap:14px;margin-top:8px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:${C.text};"><span style="width:14px;height:3px;background:${C.line};display:inline-block;"></span>Santri ini</div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:${C.text};"><span style="width:14px;height:0;border-top:2px dashed ${C.group};display:inline-block;"></span>Rata-rata ${groupName}</div>
+    <div style="font-size:12px;color:${C.text};">${mode==='weekly'?'Per minggu (tanggal = hari Senin)':'Per hari'}</div>
+  </div>`;
+}
+function trendSummaryHtml(series){
+  const ts = trendSummary(series);
+  if(!ts) return '';
+  return `<div class="detail-panel" style="margin:10px 0 0;">
+    <div class="detail-row"><span>Rata-rata paruh awal periode</span><b>${ts.first}%</b></div>
+    <div class="detail-row"><span>Rata-rata paruh akhir periode</span><b>${ts.last}%</b></div>
+    <div class="detail-row"><span>Kesimpulan tren</span><b>${ts.label} (${deltaPlain(ts.diff)} poin)</b></div>
+  </div>`;
+}
+
+function buildPrincipalSummary(rows, detail, periodWord, label){
+  const L = [];
+  const d = gradeDistribution(rows);
+  const pr = state.prevResult;
+  L.push('LAPORAN AMALIYAH HARIAN SANTRI');
+  L.push(SCHOOL_NAME);
+  L.push(`${periodWord}: ${label}`);
+  L.push('');
+  L.push('Kepada Yth. Kepala Sekolah,');
+  L.push('');
+  L.push(`Berikut ringkasan amaliyah harian ${rows.length} santri:`);
+  L.push('');
+  L.push('📊 Sebaran nilai');
+  ['A','B','C','D'].forEach(g=> L.push(`• ${g} (${GRADE_RANGE[g]}) : ${d[g]} santri`));
+  L.push('');
+  [['banin','Banin'],['banat','Banat']].forEach(([g,nm])=>{
+    const cls = classAnalytics(rows, g);
+    if(!cls.n) return;
+    L.push(`${nm.toUpperCase()} — rata-rata ${cls.avgPct}% (Nilai ${cls.letter}), ${cls.n} santri`);
+    if(pr){
+      const ci = compareInfo(rows, g);
+      if(ci.delta!==null) L.push(`📈 Dibanding ${pr.label}: ${ci.prev}% → ${ci.cur}% (${deltaPlain(ci.delta)} poin)`);
+      else L.push(`📈 Dibanding ${pr.label}: belum ada data pembanding`);
+    }
+    const agg = aggregateAmal(g, detail);
+    if(agg.length){
+      const c = classifyAmal(agg);
+      L.push(`✅ Paling sering: ${fmtAmalList(c.most)}`);
+      L.push(`⚠️ Paling jarang: ${fmtAmalList(c.least)}`);
+      if(c.never.length) L.push(`❌ Tidak pernah dilakukan siapa pun: ${c.never.map(t=>t.name).join(', ')}`);
+      const noOne = agg.filter(t=>t.studentsNever>0 && t.done>0).sort((a,b)=>b.studentsNever-a.studentsNever).slice(0,3);
+      if(noOne.length) L.push(`👥 Banyak santri yang tidak pernah melakukan: ${noOne.map(t=>`${t.name} (${t.studentsNever} santri)`).join(', ')}`);
+    }
+    L.push('');
+  });
+  const att = computeAttention(rows);
+  if(att.length){
+    L.push(`🔔 Santri yang perlu pendampingan (${att.length} santri):`);
+    att.forEach((a,i)=> L.push(`   ${i+1}. ${a.row.name} (${a.row.group==='banin'?'Banin':'Banat'}, ${a.row.pct}%) — ${a.reasons.map(x=>x.t).join('; ')}`));
+    L.push('');
+  } else {
+    L.push('✅ Tidak ada santri yang memerlukan pendampingan khusus pada periode ini.');
+    L.push('');
+  }
+  L.push(GRADE_SCALE_TEXT);
+  L.push('');
+  L.push('Demikian laporan ini kami sampaikan. Jazakumullahu khairan.');
+  return L.join('\n');
+}
+
+function openPrintWindow(html){
   const win = window.open('', '_blank');
   if(!win){ showToast('Popup diblokir browser, izinkan popup lalu coba lagi'); return; }
   win.document.write(html);
   win.document.close();
   win.focus();
   setTimeout(()=>{ win.print(); }, 300);
+}
+const PRINT_CSS = `
+  @page{size:A4 landscape;margin:12mm;}
+  body{font-family:Arial,sans-serif;padding:8px;color:#20291F;}
+  h1{font-size:18px;margin:0 0 2px;} h2{font-size:14px;margin:18px 0 6px;}
+  p{margin:0 0 10px;color:#555;font-size:12.5px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px;}
+  th,td{border:1px solid #ccc;padding:5px 7px;text-align:left;vertical-align:top;}
+  th{background:#EAE6D6;} tr{page-break-inside:avoid;}
+  .g{font-weight:700;text-align:center;}
+  .A{background:#E4EEE9;} .B{background:#EAF3DC;} .C{background:#F5E9CC;} .D{background:#F3E1DE;}`;
+
+function exportRecapExcel(rows, period, label, detail){
+  if(typeof XLSX==='undefined'){ showToast('Modul Excel gagal dimuat, cek koneksi internet'); return; }
+  const wb = XLSX.utils.book_new();
+  const data = rows.map((r,i)=>{
+    const o = {
+      'No': i+1, 'Nama': r.name, 'Kelompok': r.group==='banin'?'Banin':'Banat',
+      'Selesai': `${r.doneSum}/${r.maxPossible}`, 'Persentase': r.pct, 'Nilai': gradeLetter(r.pct)
+    };
+    if(detail && detail.perStudent[r.id]){
+      const dl0 = deltaOf(r); o['Selisih vs Periode Lalu (poin)'] = dl0===null ? '' : dl0;
+      const c = classifyAmal(detail.perStudent[r.id]);
+      o['Paling Sering'] = fmtAmalList(c.most);
+      o['Paling Jarang'] = fmtAmalList(c.least);
+      o['Tidak Pernah Dilakukan'] = c.never.length ? c.never.map(t=>t.name).join(', ') : '-';
+    }
+    return o;
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{wch:4},{wch:26},{wch:10},{wch:10},{wch:12},{wch:8},{wch:16},{wch:48},{wch:48},{wch:40}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Rekap');
+  const attList = computeAttention(rows);
+  if(attList.length){
+    const wsA = XLSX.utils.json_to_sheet(attList.map((a,i)=>({
+      'No': i+1, 'Nama': a.row.name, 'Kelompok': a.row.group==='banin'?'Banin':'Banat',
+      'Persentase': a.row.pct, 'Nilai': gradeLetter(a.row.pct), 'Alasan': a.reasons.map(x=>x.t).join('; ')
+    })));
+    wsA['!cols'] = [{wch:4},{wch:26},{wch:10},{wch:12},{wch:8},{wch:70}];
+    XLSX.utils.book_append_sheet(wb, wsA, 'Perlu Pendampingan');
+  }
+  if(detail){
+    const det = [];
+    rows.forEach(r=>{
+      (detail.perStudent[r.id]||[]).slice().sort((a,b)=>b.pct-a.pct||a.name.localeCompare(b.name)).forEach(t=>{
+        det.push({ 'Nama': r.name, 'Kelompok': r.group==='banin'?'Banin':'Banat', 'Amaliyah': t.name,
+          'Terlaksana (hari)': t.done, 'Hari Wajib': t.maxDays, 'Persentase': t.pct, 'Nilai': gradeLetter(t.pct),
+          'Keterangan': t.maxDays>0 && t.done===0 ? 'Tidak pernah dilakukan' : '' });
+      });
+    });
+    const ws2 = XLSX.utils.json_to_sheet(det);
+    ws2['!cols'] = [{wch:26},{wch:10},{wch:32},{wch:16},{wch:11},{wch:12},{wch:8},{wch:24}];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Detail per Santri');
+    const d = gradeDistribution(rows);
+    const aoa = [['Sebaran Nilai'],['Nilai','Rentang','Jumlah Santri']];
+    ['A','B','C','D'].forEach(g=> aoa.push([g, GRADE_RANGE[g], d[g]]));
+    if(state.prevResult){
+      aoa.push([]);
+      aoa.push(['Perbandingan Rata-rata','Sekarang (%)','Periode Lalu (%)','Selisih (poin)','Periode Pembanding']);
+      [['banin','Banin'],['banat','Banat']].forEach(([g,nm])=>{
+        const ci = compareInfo(rows, g);
+        aoa.push([nm, ci.cur===null?'':ci.cur, ci.prev===null?'':ci.prev, ci.delta===null?'':ci.delta, state.prevResult.label]);
+      });
+    }
+    aoa.push([]);
+    aoa.push(['Kelompok','Amaliyah','Pelaksanaan (%)','Nilai','Santri Tidak Pernah Melakukan']);
+    [['banin','Banin'],['banat','Banat']].forEach(([g,nm])=>{
+      aggregateAmal(g, detail).forEach(t=> aoa.push([nm, t.name, t.pct, gradeLetter(t.pct), t.studentsNever]));
+    });
+    const ws3 = XLSX.utils.aoa_to_sheet(aoa);
+    ws3['!cols'] = [{wch:14},{wch:32},{wch:16},{wch:8},{wch:30}];
+    XLSX.utils.book_append_sheet(wb, ws3, 'Ringkasan');
+  }
+  XLSX.writeFile(wb, `rekap-amaliyah-${period==='bulanan'?label:'mingguan-'+label}.xlsx`);
+  showToast('File Excel diunduh');
+}
+function printRecapPdf(rows, periodLabel, detail){
+  const d = gradeDistribution(rows);
+  const distHtml = `<table style="width:auto;"><tr><th>Nilai</th><th>Rentang</th><th>Jumlah Santri</th></tr>` +
+    ['A','B','C','D'].map(g=>`<tr class="${g}"><td class="g">${g}</td><td>${GRADE_RANGE[g]}</td><td>${d[g]}</td></tr>`).join('') + `</table>`;
+  let amalHtml = '';
+  if(detail){
+    [['banin','Banin'],['banat','Banat']].forEach(([g,nm])=>{
+      const agg = aggregateAmal(g, detail);
+      if(!agg.length) return;
+      const cls = classAnalytics(rows, g);
+      amalHtml += `<h2>Amaliyah ${nm} — rata-rata ${cls.avgPct}% (Nilai ${cls.letter})</h2>
+        <table><tr><th>Amaliyah</th><th>Pelaksanaan</th><th>Nilai</th><th>Santri yang tidak pernah melakukan</th></tr>` +
+        agg.map(t=>`<tr class="${gradeLetter(t.pct)}"><td>${escapeHtml(t.name)}</td><td>${t.pct}%</td><td class="g">${gradeLetter(t.pct)}</td><td>${t.studentsNever} dari ${t.students} santri</td></tr>`).join('') + `</table>`;
+    });
+  }
+  let compareHtml = '';
+  if(state.prevResult){
+    compareHtml = `<h2>Perbandingan dengan ${escapeHtml(state.prevResult.label)}</h2>
+      <table style="width:auto;"><tr><th>Kelompok</th><th>Sekarang</th><th>Periode lalu</th><th>Selisih (poin)</th></tr>` +
+      [['banin','Banin'],['banat','Banat']].map(([g,nm])=>{
+        const ci = compareInfo(rows, g);
+        return `<tr><td>${nm}</td><td>${ci.cur===null?'-':ci.cur+'%'}</td><td>${ci.prev===null?'-':ci.prev+'%'}</td><td>${deltaPlain(ci.delta)}</td></tr>`;
+      }).join('') + `</table>`;
+  }
+  const attList = computeAttention(rows);
+  const attentionHtml = attList.length
+    ? `<h2>Santri yang Perlu Pendampingan (${attList.length})</h2>
+       <table><tr><th>#</th><th>Nama</th><th>Kelompok</th><th>%</th><th>Nilai</th><th>Alasan</th></tr>` +
+       attList.map((a,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(a.row.name)}</td><td>${a.row.group==='banin'?'Banin':'Banat'}</td><td>${a.row.pct}%</td><td class="g ${gradeLetter(a.row.pct)}">${gradeLetter(a.row.pct)}</td><td>${escapeHtml(a.reasons.map(x=>x.t).join('; '))}</td></tr>`).join('') +
+       `</table><p>${escapeHtml(ATTENTION_CRITERIA)}</p>`
+    : `<h2>Santri yang Perlu Pendampingan</h2><p>Tidak ada santri yang memerlukan pendampingan khusus pada periode ini.</p>`;
+  const rowsHtml = rows.map((r,i)=>{
+    let extra = '';
+    if(detail){
+      const c = classifyAmal(detail.perStudent[r.id]||[]);
+      extra = `<td>${escapeHtml(fmtAmalList(c.most))}</td><td>${escapeHtml(fmtAmalList(c.least))}</td><td>${escapeHtml(c.never.length?c.never.map(t=>t.name).join(', '):'-')}</td>`;
+    }
+    return `<tr><td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${r.group==='banin'?'Banin':'Banat'}</td>
+      <td>${r.doneSum}/${r.maxPossible}</td><td>${r.pct}%</td><td class="g ${gradeLetter(r.pct)}">${gradeLetter(r.pct)}</td><td>${deltaPlain(deltaOf(r))}</td>${extra}</tr>`;
+  }).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Rekap Amaliyah Harian — ${periodLabel}</title><style>${PRINT_CSS}</style></head><body>
+    <h1>${SCHOOL_NAME}</h1>
+    <p>Laporan Rekap Amaliyah Harian — ${periodLabel}<br>${GRADE_SCALE_TEXT}</p>
+    <h2>Sebaran Nilai (${rows.length} santri)</h2>${distHtml}
+    ${compareHtml}
+    ${attentionHtml}
+    ${amalHtml}
+    <h2>Rekap per Santri</h2>
+    <table><tr><th>#</th><th>Nama</th><th>Kelompok</th><th>Selesai</th><th>%</th><th>Nilai</th><th>Δ vs lalu</th>${detail?'<th>Paling sering</th><th>Paling jarang</th><th>Tidak pernah</th>':''}</tr>${rowsHtml}</table>
+    </body></html>`;
+  openPrintWindow(html);
+}
+function printStudentPdf(student, row, detail, periodLabel){
+  const list = (detail||[]).slice().sort((a,b)=>b.pct-a.pct||a.name.localeCompare(b.name));
+  const c = classifyAmal(list);
+  const letter = gradeLetter(row.pct);
+  const series = poolSeries(state.amalDetail, [student.id], 'daily');
+  const gseries = poolSeries(state.amalDetail, state.students.filter(s=>s.group===student.group).map(s=>s.id), 'daily');
+  const groupName = student.group==='banin' ? 'Banin' : 'Banat';
+  const dl = deltaOf(row);
+  const pr = state.prevResult;
+  const att = computeAttention([row])[0];
+  const cmp = dl!==null && pr ? `<p>Dibanding ${escapeHtml(pr.label)}: <b>${deltaPlain(dl)} poin</b> (periode lalu ${pr.map[row.id].pct}%)</p>` : '';
+  const attHtml = att ? `<p><b>🔔 Perlu pendampingan:</b> ${escapeHtml(att.reasons.map(x=>x.t).join('; '))}</p>` : '';
+  const ts = trendSummary(series);
+  const tsHtml = ts ? `<p>Tren: <b>${ts.label}</b> — paruh awal ${ts.first}% → paruh akhir ${ts.last}% (${deltaPlain(ts.diff)} poin)</p>` : '';
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Laporan Amaliyah ${escapeHtml(student.name)}</title><style>${PRINT_CSS}</style></head><body>
+    <h1>${SCHOOL_NAME}</h1>
+    <p>Laporan Amaliyah Harian — ${periodLabel}</p>
+    <h2>${escapeHtml(student.name)} (${groupName})</h2>
+    <p>Total ${row.doneSum}/${row.maxPossible} amaliyah — <b>${row.pct}%</b> — Nilai <b>${letter}</b> (${gradeDesc(letter)})</p>
+    ${cmp}${attHtml}
+    <table><tr><th>Amaliyah</th><th>Terlaksana</th><th>Persentase</th><th>Nilai</th></tr>
+    ${list.map(t=>`<tr class="${gradeLetter(t.pct)}"><td>${escapeHtml(t.name)}</td><td>${t.done}/${t.maxDays} hari</td><td>${t.pct}%</td><td class="g">${gradeLetter(t.pct)}</td></tr>`).join('')}
+    </table>
+    <p><b>Paling sering:</b> ${escapeHtml(fmtAmalList(c.most))}<br>
+    <b>Paling jarang:</b> ${escapeHtml(fmtAmalList(c.least))}<br>
+    <b>Tidak pernah dilakukan:</b> ${escapeHtml(c.never.length?c.never.map(t=>t.name).join(', '):'-')}</p>
+    <h2>Grafik Tren Harian</h2>
+    <div style="max-width:620px;">${renderStudentTrendChart(series, gseries, CHART_PRINT, groupName, 'daily')}</div>
+    ${tsHtml}
+    <p>${GRADE_SCALE_TEXT}</p>
+    </body></html>`;
+  openPrintWindow(html);
 }
 function keysForPeriod(period, periodValue){
   if(period==='mingguan'){
@@ -1495,43 +1916,176 @@ function renderCalendarGrid(student, calData, ym){
     </div>
   </div>`;
 }
+function renderRecapDistribution(rows){
+  const d = gradeDistribution(rows);
+  const pr = state.prevResult;
+  const boxes = ['A','B','C','D'].map(g=>`
+    <div class="grade-box g${g}"><div class="gl">${g}</div><div class="gn">${d[g]}</div><div class="gr">${GRADE_RANGE[g]}</div></div>`).join('');
+  const avgLine = [['banin','Banin'],['banat','Banat']].map(([g,nm])=>{
+    const c = classAnalytics(rows, g);
+    if(!c.n) return '';
+    let cmp = '';
+    if(pr){
+      const ci = compareInfo(rows, g);
+      cmp = ci.delta!==null
+        ? `<div class="detail-row" style="padding-top:0;"><span>&nbsp;&nbsp;↳ vs ${escapeHtml(pr.label)} (${ci.prev}%)</span><b>${fmtDelta(ci.delta)} poin</b></div>`
+        : `<div class="detail-row" style="padding-top:0;"><span>&nbsp;&nbsp;↳ vs ${escapeHtml(pr.label)}</span><b class="muted">belum ada data pembanding</b></div>`;
+    }
+    return `<div class="detail-row"><span>Rata-rata ${nm} (${c.n} santri)</span><b>${c.avgPct}% — Nilai ${c.letter}</b></div>${cmp}`;
+  }).join('');
+  return `<div class="section-title">SEBARAN NILAI (${rows.length} SANTRI)</div>
+    <div class="grade-grid">${boxes}</div>
+    <div class="detail-panel" style="margin:0 0 12px;">${avgLine}</div>
+    <p class="muted" style="margin:0 0 14px;">${GRADE_SCALE_TEXT}</p>`;
+}
+function renderAttentionCard(rows){
+  const list = computeAttention(rows);
+  if(!list.length){
+    return `<div class="amal-box good"><h4>✅ Tidak ada santri yang perlu pendampingan khusus</h4><span class="muted" style="font-size:12.5px;">${ATTENTION_CRITERIA}</span></div>`;
+  }
+  return `<div class="amal-box bad">
+    <h4>🔔 Perlu Pendampingan (${list.length} santri)</h4>
+    ${list.map(a=>`
+      <div class="srow">
+        <div style="flex:1;min-width:0;">
+          <div class="sname">${escapeHtml(a.row.name)}</div>
+          <div class="muted">${a.row.group==='banin'?'Banin':'Banat'} • ${a.row.pct}%</div>
+          <div>${a.reasons.map(x=>`<span class="pill gD" style="margin:3px 4px 0 0;background:#fff;">${escapeHtml(x.t)}</span>`).join('')}</div>
+        </div>
+        <button class="icon-btn" data-detail-student="${a.row.id}" title="Lihat detail santri ini">📊</button>
+      </div>`).join('')}
+    <p class="muted" style="margin:10px 0 0;font-size:12.5px;">${ATTENTION_CRITERIA}</p>
+  </div>`;
+}
+function renderAmalGroupCard(label, group){
+  const agg = aggregateAmal(group, state.amalDetail);
+  if(!agg.length) return '';
+  const c = classifyAmal(agg);
+  const list = (arr)=> arr.length ? arr.map(t=>`${escapeHtml(t.name)} (${t.pct}%)`).join(', ') : '-';
+  return `
+  <div class="section-title">PERSENTASE AMALIYAH — ${label.toUpperCase()}</div>
+  <div class="scroll-x"><table>
+    <tr><th>Amaliyah</th><th>Pelaksanaan</th><th>Nilai</th><th>Santri tidak pernah</th></tr>
+    ${agg.map(t=>`<tr>
+      <td>${escapeHtml(t.name)}</td>
+      <td><div class="row" style="gap:8px;"><div class="sprog"><div style="width:${t.pct}%"></div></div><span>${t.pct}%</span></div></td>
+      <td><span class="pill g${gradeLetter(t.pct)}">${gradeLetter(t.pct)}</span></td>
+      <td>${t.studentsNever}/${t.students}</td></tr>`).join('')}
+  </table></div>
+  <div class="amal-box good" style="margin-top:10px;"><h4>✅ Paling sering dilakukan</h4>${list(c.most)}</div>
+  <div class="amal-box warn"><h4>⚠️ Paling jarang dilakukan</h4>${list(c.least)}</div>
+  <div class="amal-box bad"><h4>❌ Tidak pernah dilakukan siapa pun</h4>${c.never.length ? c.never.map(t=>escapeHtml(t.name)).join(', ') : 'Tidak ada'}</div>`;
+}
+function renderStudentAmalDetail(rows){
+  const sel = state.recapStudentId;
+  const opt = (g)=> rows.filter(r=>r.group===g).slice().sort((a,b)=>a.name.localeCompare(b.name))
+    .map(r=>`<option value="${r.id}" ${r.id===sel?'selected':''}>${escapeHtml(r.name)}</option>`).join('');
+  const selectHtml = `<div class="field"><label>Pilih santri</label>
+    <select id="recapStudentSelect"><option value="">— Pilih santri —</option>
+    <optgroup label="Banin">${opt('banin')}</optgroup><optgroup label="Banat">${opt('banat')}</optgroup></select></div>`;
+  const row = rows.find(r=>r.id===sel);
+  if(!row) return selectHtml + '<div class="empty">Pilih santri untuk melihat persentase amaliyahnya.</div>';
+  const list = ((state.amalDetail && state.amalDetail.perStudent[sel]) || []).slice()
+    .sort((a,b)=>b.pct-a.pct || a.name.localeCompare(b.name));
+  const c = classifyAmal(list);
+  const ol = (arr, empty)=> arr.length
+    ? `<ol>${arr.map(t=>`<li>${escapeHtml(t.name)} — ${t.done}/${t.maxDays} hari (${t.pct}%)</li>`).join('')}</ol>` : `<span class="muted">${empty}</span>`;
+  const letter = gradeLetter(row.pct);
+  const pr = state.prevResult;
+  const dl = deltaOf(row);
+  const cmpHtml = `<div class="detail-panel" style="margin:0 0 12px;">` + (dl!==null && pr
+    ? `<div class="detail-row"><span>Periode lalu (${escapeHtml(pr.label)})</span><b>${pr.map[row.id].pct}%</b></div>
+       <div class="detail-row"><span>Perubahan</span><b>${fmtDelta(dl)} poin</b></div>`
+    : `<div class="detail-row"><span>Dibanding periode lalu</span><b class="muted">belum ada data pembanding</b></div>`) + `</div>`;
+  const att = computeAttention([row])[0];
+  const attHtml = att ? `<div class="amal-box bad"><h4>🔔 Perlu pendampingan</h4>${att.reasons.map(x=>`<div>• ${escapeHtml(x.t)}</div>`).join('')}</div>` : '';
+  const isMonthly = (state.recapPeriod || 'bulanan')==='bulanan';
+  const mode = isMonthly ? (state.trendMode || 'daily') : 'daily';
+  const series = poolSeries(state.amalDetail, [sel], mode);
+  const gseries = poolSeries(state.amalDetail, state.students.filter(s=>s.group===row.group).map(s=>s.id), mode);
+  const groupName = row.group==='banin' ? 'Banin' : 'Banat';
+  const modeChips = isMonthly ? `<div class="row" style="gap:8px;margin:0 0 10px;">
+      <button class="period-chip ${mode==='daily'?'active':''}" data-trend-mode="daily">Harian</button>
+      <button class="period-chip ${mode==='weekly'?'active':''}" data-trend-mode="weekly">Mingguan</button>
+    </div>` : '';
+  return `${selectHtml}
+    <div class="card grade-card" style="background:var(--surface-alt);">
+      <div class="muted">${escapeHtml(row.name)} — ${groupName}</div>
+      <div class="grade-letter">${letter}</div>
+      <div style="font-weight:600;margin-top:4px;">${row.pct}% — ${gradeDesc(letter)}</div>
+      <div class="muted">${row.doneSum}/${row.maxPossible} amaliyah</div>
+    </div>
+    ${cmpHtml}
+    ${attHtml}
+    <div class="section-title">GRAFIK TREN</div>
+    ${modeChips}
+    ${renderStudentTrendChart(series, gseries, CHART_APP, groupName, mode)}
+    ${trendSummaryHtml(series)}
+    <div class="amal-box good" style="margin-top:14px;"><h4>✅ Paling sering dilakukan</h4>${ol(c.most,'Belum ada data')}</div>
+    <div class="amal-box warn"><h4>⚠️ Paling jarang dilakukan</h4>${ol(c.least,'Tidak ada')}</div>
+    <div class="amal-box bad"><h4>❌ Tidak pernah dilakukan</h4>${c.never.length?`<ul>${c.never.map(t=>`<li>${escapeHtml(t.name)}</li>`).join('')}</ul>`:'<span class="muted">Tidak ada — semua amaliyah pernah dilakukan</span>'}</div>
+    <div class="section-title">SEMUA AMALIYAH</div>
+    <div class="scroll-x"><table>
+      <tr><th>Amaliyah</th><th>Terlaksana</th><th>Persentase</th><th>Nilai</th></tr>
+      ${list.map(t=>`<tr><td>${escapeHtml(t.name)}</td><td>${t.done}/${t.maxDays}</td>
+        <td><div class="row" style="gap:8px;"><div class="sprog"><div style="width:${t.pct}%"></div></div><span>${t.pct}%</span></div></td>
+        <td><span class="pill g${gradeLetter(t.pct)}">${gradeLetter(t.pct)}</span></td></tr>`).join('')}
+    </table></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:14px;">
+      <button class="btn btn-ghost btn-sm" id="copyStudentDetailWaBtn">📋 Salin Laporan WA</button>
+      <button class="btn btn-ghost btn-sm" id="printStudentPdfBtn">🖨️ Cetak / Simpan PDF</button>
+    </div>`;
+}
 function renderAdminMonthly(){
   const period = state.recapPeriod || 'bulanan';
+  const view = state.recapView || 'all';
   const defaultYm = state.monthYear || currentYm();
   const defaultWeekStart = state.weekStart || mondayOf(todayKey());
-  let tableHtml = '<div class="empty">Pilih periode lalu tekan "Tampilkan" untuk melihat rekap.</div>';
-  let copyBtnHtml = '';
-  let teladanHtml = '';
+  let bodyHtml = '<div class="empty">Pilih periode lalu tekan "Tampilkan" untuk melihat rekap.</div>';
   if(state.monthlyResult){
     const {rows} = state.monthlyResult;
-    const baninTop = rows.find(r=>r.group==='banin' && r.pct>0);
-    const banatTop = rows.find(r=>r.group==='banat' && r.pct>0);
-    if(baninTop || banatTop){
-      const parts = [];
-      if(baninTop) parts.push(`${baninTop.name} — Banin (${baninTop.pct}%)`);
-      if(banatTop) parts.push(`${banatTop.name} — Banat (${banatTop.pct}%)`);
-      teladanHtml = `<div class="teladan-banner">🌟 <b>Santri Teladan Periode Ini:</b><br>${parts.join('<br>')}</div>`;
-    }
-    tableHtml = `
-    <table>
-      <tr><th>#</th><th>Nama</th><th>Kelompok</th><th>Selesai</th><th>Nilai</th><th></th></tr>
-      ${rows.map((r,i)=>`
-        <tr>
-          <td>${i+1}</td><td>${r.name}</td><td>${r.group==='banin'?'Banin':'Banat'}</td>
-          <td>${r.doneSum}/${r.maxPossible}</td>
-          <td><span class="pill teal">${r.pct}% (${gradeLetter(r.pct)})</span></td>
-          <td style="white-space:nowrap;">
-            <button class="icon-btn" data-copy-student-wa="${r.id}" title="Salin laporan WA santri ini">📋</button>
-            <button class="icon-btn" data-cal-student="${r.id}" title="Lihat riwayat kalender">📅</button>
-          </td>
-        </tr>`).join('')}
-    </table>`;
-    copyBtnHtml = `
-    <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:14px;">
-      <button class="btn btn-ghost btn-sm" id="copyMonthlyWaBtn">📋 Salin Laporan WA — Semua Santri</button>
-      <button class="btn btn-ghost btn-sm" id="exportExcelBtn">📊 Export Excel</button>
-      <button class="btn btn-ghost btn-sm" id="printPdfBtn">🖨️ Cetak / Simpan PDF</button>
+    const chips = `<div class="row" style="gap:8px;margin:14px 0;">
+      <button class="period-chip ${view==='all'?'active':''}" data-recap-view="all">📊 Menyeluruh</button>
+      <button class="period-chip ${view==='student'?'active':''}" data-recap-view="student">👤 Per Santri</button>
     </div>`;
+    if(view==='student'){
+      bodyHtml = chips + renderStudentAmalDetail(rows);
+    } else {
+      const baninTop = rows.find(r=>r.group==='banin' && r.pct>0);
+      const banatTop = rows.find(r=>r.group==='banat' && r.pct>0);
+      let teladanHtml = '';
+      if(baninTop || banatTop){
+        const parts = [];
+        if(baninTop) parts.push(`${baninTop.name} — Banin (${baninTop.pct}%)`);
+        if(banatTop) parts.push(`${banatTop.name} — Banat (${banatTop.pct}%)`);
+        teladanHtml = `<div class="teladan-banner">🌟 <b>Santri Teladan Periode Ini:</b><br>${parts.join('<br>')}</div>`;
+      }
+      bodyHtml = chips + teladanHtml + renderRecapDistribution(rows) + renderAttentionCard(rows) + `
+      <div class="section-title">REKAP PER SANTRI</div>
+      <div class="scroll-x"><table>
+        <tr><th>#</th><th>Nama</th><th>Kelompok</th><th>Selesai</th><th>Nilai</th><th title="Perubahan poin dibanding periode lalu">Δ</th><th></th></tr>
+        ${rows.map((r,i)=>`
+          <tr>
+            <td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${r.group==='banin'?'Banin':'Banat'}</td>
+            <td>${r.doneSum}/${r.maxPossible}</td>
+            <td>${gradePill(r.pct)}</td>
+            <td>${fmtDelta(deltaOf(r))}</td>
+            <td style="white-space:nowrap;">
+              <button class="icon-btn" data-detail-student="${r.id}" title="Lihat amaliyah yang sering / jarang dilakukan">📊</button>
+              <button class="icon-btn" data-copy-student-wa="${r.id}" title="Salin laporan WA santri ini">📋</button>
+              <button class="icon-btn" data-cal-student="${r.id}" title="Lihat riwayat kalender">📅</button>
+            </td>
+          </tr>`).join('')}
+      </table></div>
+      ${renderAmalGroupCard('Banin','banin')}
+      ${renderAmalGroupCard('Banat','banat')}
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:14px;">
+        <button class="btn btn-primary btn-sm" id="copyPrincipalBtn">📋 Salin Ringkasan untuk Kepala Sekolah</button>
+        <button class="btn btn-ghost btn-sm" id="copyMonthlyWaBtn">📋 Salin Laporan WA — Semua Santri</button>
+        <button class="btn btn-ghost btn-sm" id="exportExcelBtn">📊 Export Excel</button>
+        <button class="btn btn-ghost btn-sm" id="printPdfBtn">🖨️ Cetak / Simpan PDF</button>
+      </div>`;
+    }
   }
   let calendarHtml = '';
   if(state.calendarStudentId){
@@ -1555,9 +2109,7 @@ function renderAdminMonthly(){
       <button class="btn btn-primary" id="showMonthlyBtn">Tampilkan</button>
     </div>
     ${period==='mingguan' ? `<p class="muted" style="margin:0 0 12px;">Minggu: ${weekRangeLabel(defaultWeekStart)} (Senin–Ahad, pilih tanggal mana saja pada minggu tsb)</p>` : ''}
-    ${teladanHtml}
-    ${tableHtml}
-    ${copyBtnHtml}
+    ${bodyHtml}
   </div>
   ${calendarHtml}`;
 }
@@ -1842,7 +2394,7 @@ function attachAdminEvents(){
   document.getElementById('logoutBtn').onclick = doLogout;
   document.querySelectorAll('[data-tab]').forEach(el=>{
     el.onclick = ()=>{
-      state.adminTab = el.dataset.tab; state.monthlyResult=null; state.analyticsResult=null; state.analyticsItemStats=null; state.analyticsTrend=null; state.calendarStudentId=null; state.calendarResult=null; state.expandedStudent=null; state.editingTaskId=null;
+      state.adminTab = el.dataset.tab; state.monthlyResult=null; state.amalDetail=null; state.prevResult=null; state.analyticsResult=null; state.analyticsItemStats=null; state.analyticsTrend=null; state.calendarStudentId=null; state.calendarResult=null; state.expandedStudent=null; state.editingTaskId=null;
       if(state.adminTab==='today'){ loadTodayChecklist().then(render); startTodayPolling(); }
       else { stopTodayPolling(); render(); }
     };
@@ -1901,6 +2453,8 @@ function attachAdminEvents(){
       periodSelect.onchange = ()=>{
         state.recapPeriod = periodSelect.value;
         state.monthlyResult = null;
+        state.amalDetail = null;
+        state.prevResult = null;
         state.calendarStudentId = null;
         state.calendarResult = null;
         render();
@@ -1920,6 +2474,14 @@ function attachAdminEvents(){
         state.weekStart = mondayOf(picked);
         state.monthlyResult = await computeWeekly(state.weekStart);
       }
+      const periodValue = period==='bulanan' ? state.monthYear : state.weekStart;
+      state.amalDetail = null; state.prevResult = null;
+      try{
+        state.amalDetail = await computeAmalDetail(clipKeysToAppStart(keysForPeriod(period, periodValue)));
+      }catch(err){ console.error('computeAmalDetail error', err); state.amalDetail = null; }
+      try{
+        state.prevResult = await computePrevious(period, periodValue);
+      }catch(err){ console.error('computePrevious error', err); state.prevResult = null; }
       render();
     };
     const copyBtn = document.getElementById('copyMonthlyWaBtn');
@@ -1938,7 +2500,7 @@ function attachAdminEvents(){
       exportExcelBtn.onclick = ()=>{
         const period = state.recapPeriod || 'bulanan';
         const label = period==='bulanan' ? (state.monthYear || currentYm()) : (state.weekStart || mondayOf(todayKey()));
-        exportRecapExcel(state.monthlyResult.rows, period, label);
+        exportRecapExcel(state.monthlyResult.rows, period, label, state.amalDetail);
       };
     }
     const printPdfBtn = document.getElementById('printPdfBtn');
@@ -1946,7 +2508,7 @@ function attachAdminEvents(){
       printPdfBtn.onclick = ()=>{
         const period = state.recapPeriod || 'bulanan';
         const label = period==='bulanan' ? monthLabelId(state.monthYear || currentYm()) : `Minggu ${weekRangeLabel(state.weekStart || mondayOf(todayKey()))}`;
-        printRecapPdf(state.monthlyResult.rows, label);
+        printRecapPdf(state.monthlyResult.rows, label, state.amalDetail);
       };
     }
     document.querySelectorAll('[data-copy-student-wa]').forEach(el=>{
@@ -1957,7 +2519,7 @@ function attachAdminEvents(){
         if(!student || !row) return;
         const period = state.recapPeriod || 'bulanan';
         const periodValue = period==='bulanan' ? (state.monthYear || currentYm()) : (state.weekStart || mondayOf(todayKey()));
-        const text = buildStudentWaReport(student, row, period, periodValue);
+        const text = buildStudentWaReport(student, row, period, periodValue, state.amalDetail && state.amalDetail.perStudent[sid]);
         const ok = await copyToClipboard(text);
         showToast(ok ? 'Laporan disalin ke clipboard' : 'Gagal menyalin, coba lagi');
       };
@@ -1982,6 +2544,60 @@ function attachAdminEvents(){
     const closeCalBtn = document.getElementById('closeCalendarBtn');
     if(closeCalBtn){
       closeCalBtn.onclick = ()=>{ state.calendarStudentId=null; state.calendarResult=null; render(); };
+    }
+  }
+  if(state.adminTab==='monthly'){
+    const curPeriod = () => state.recapPeriod || 'bulanan';
+    const curLabel = () => curPeriod()==='bulanan' ? monthLabelId(state.monthYear || currentYm()) : `Minggu ${weekRangeLabel(state.weekStart || mondayOf(todayKey()))}`;
+    document.querySelectorAll('[data-recap-view]').forEach(el=>{
+      el.onclick = ()=>{ state.recapView = el.dataset.recapView; render(); };
+    });
+    document.querySelectorAll('[data-detail-student]').forEach(el=>{
+      el.onclick = ()=>{
+        state.recapView = 'student';
+        state.recapStudentId = el.dataset.detailStudent;
+        state.calendarStudentId = null; state.calendarResult = null;
+        render();
+        window.scrollTo({top:0, behavior:'smooth'});
+      };
+    });
+    document.querySelectorAll('[data-trend-mode]').forEach(el=>{
+      el.onclick = ()=>{ state.trendMode = el.dataset.trendMode; render(); };
+    });
+    const studentSelect = document.getElementById('recapStudentSelect');
+    if(studentSelect){
+      studentSelect.onchange = ()=>{ state.recapStudentId = studentSelect.value || null; render(); };
+    }
+    const principalBtn = document.getElementById('copyPrincipalBtn');
+    if(principalBtn){
+      principalBtn.onclick = async ()=>{
+        const text = buildPrincipalSummary(state.monthlyResult.rows, state.amalDetail, curPeriod()==='bulanan'?'Bulan':'Minggu', curLabel().replace(/^Minggu /,''));
+        const ok = await copyToClipboard(text);
+        showToast(ok ? 'Ringkasan disalin ke clipboard' : 'Gagal menyalin, coba lagi');
+      };
+    }
+    const copyStudentBtn = document.getElementById('copyStudentDetailWaBtn');
+    if(copyStudentBtn){
+      copyStudentBtn.onclick = async ()=>{
+        const sid = state.recapStudentId;
+        const row = state.monthlyResult.rows.find(r=>r.id===sid);
+        const student = state.students.find(s=>s.id===sid);
+        if(!row || !student) return;
+        const pv = curPeriod()==='bulanan' ? (state.monthYear || currentYm()) : (state.weekStart || mondayOf(todayKey()));
+        const text = buildStudentWaReport(student, row, curPeriod(), pv, state.amalDetail && state.amalDetail.perStudent[sid]);
+        const ok = await copyToClipboard(text);
+        showToast(ok ? 'Laporan disalin ke clipboard' : 'Gagal menyalin, coba lagi');
+      };
+    }
+    const printStudentBtn = document.getElementById('printStudentPdfBtn');
+    if(printStudentBtn){
+      printStudentBtn.onclick = ()=>{
+        const sid = state.recapStudentId;
+        const row = state.monthlyResult.rows.find(r=>r.id===sid);
+        const student = state.students.find(s=>s.id===sid);
+        if(!row || !student) return;
+        printStudentPdf(student, row, state.amalDetail && state.amalDetail.perStudent[sid], curLabel());
+      };
     }
   }
   if(state.adminTab==='analytics'){
@@ -2287,7 +2903,7 @@ function renderParentNilai(child){
       <div class="detail-row"><span>Total kemungkinan bulan ini</span><b>${row.maxPossible}</b></div>
       <div class="detail-row"><span>Total yang tercentang</span><b>${row.doneSum}</b></div>
       <div class="detail-row"><span>Persentase</span><b>${row.pct}%</b></div>
-      <p class="muted" style="margin:10px 0 0;">Skala nilai: A ≥ 90%, B ≥ 75%, C ≥ 60%, D &lt; 60%.</p>
+      <p class="muted" style="margin:10px 0 0;">${GRADE_SCALE_TEXT}</p>
     </div>`;
   }
   return `
