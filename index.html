@@ -2069,6 +2069,25 @@ function renderAttentionCard(rows){
     <p class="muted" style="margin:10px 0 0;font-size:12.5px;">${ATTENTION_CRITERIA} Tombol 💬 menyalin pesan WhatsApp pengingat untuk orang tua.</p>
   </div>`;
 }
+function renderAmalGroupCard(label, group){
+  const agg = aggregateAmal(group, state.amalDetail);
+  if(!agg.length) return '';
+  const c = classifyAmal(agg);
+  const list = (arr)=> arr.length ? arr.map(t=>`${escapeHtml(t.name)} (${t.pct}%)`).join(', ') : '-';
+  return `
+  <div class="section-title">PERSENTASE AMALIYAH — ${label.toUpperCase()}</div>
+  <div class="scroll-x"><table>
+    <tr><th>Amaliyah</th><th>Pelaksanaan</th><th>Nilai</th><th>Santri tidak pernah</th></tr>
+    ${agg.map(t=>`<tr>
+      <td>${escapeHtml(t.name)}</td>
+      <td><div class="row" style="gap:8px;"><div class="sprog"><div style="width:${t.pct}%"></div></div><span>${t.pct}%</span></div></td>
+      <td><span class="pill g${gradeLetter(t.pct)}">${gradeLetter(t.pct)}</span></td>
+      <td>${t.studentsNever}/${t.students}</td></tr>`).join('')}
+  </table></div>
+  <div class="amal-box good" style="margin-top:10px;"><h4>✅ Paling sering dilakukan</h4>${list(c.most)}</div>
+  <div class="amal-box warn"><h4>⚠️ Paling jarang dilakukan</h4>${list(c.least)}</div>
+  <div class="amal-box bad"><h4>❌ Tidak pernah dilakukan siapa pun</h4>${c.never.length ? c.never.map(t=>escapeHtml(t.name)).join(', ') : 'Tidak ada'}</div>`;
+}
 function renderStudentAmalDetail(rows){
   const sel = state.recapStudentId;
   const opt = (g)=> rows.filter(r=>r.group===g).slice().sort((a,b)=>a.name.localeCompare(b.name))
