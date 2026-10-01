@@ -539,12 +539,12 @@ function buildAdminWeeklyWaReport(rows, mondayIso){
   return lines.join('\n');
 }
 function buildStudentWaReport(student, row, period, periodValue, detail){
-  const label = period==='mingguan' ? weekRangeLabel(periodValue) : monthLabelId(periodValue);
-  const periodWord = period==='mingguan' ? 'minggu' : 'bulan';
+  const label = period==='rentang' ? currentPeriodLabel() : (period==='mingguan' ? weekRangeLabel(periodValue) : monthLabelId(periodValue));
+  const periodWord = period==='rentang' ? 'periode' : (period==='mingguan' ? 'minggu' : 'bulan');
   const lines = [];
   lines.push('LAPORAN PERKEMBANGAN AMALIYAH HARIAN SANTRI');
   lines.push(SCHOOL_NAME);
-  lines.push(`${period==='mingguan'?'Minggu':'Bulan'}: ${label}`);
+  lines.push(`${periodWord[0].toUpperCase()+periodWord.slice(1)}: ${label}`);
   lines.push('');
   lines.push(waGreeting());
   lines.push('');
@@ -752,6 +752,49 @@ async function computeMonthly(yearMonth){
   rows.sort((a,b)=> b.pct-a.pct || a.name.localeCompare(b.name));
   return { rows, lastDay };
 }
+function addDaysIso(iso,n){ const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return dateKey(d); }
+function keysForRange(fromIso,toIso){
+  const keys=[]; const today=todayKey();
+  for(let k=fromIso; k<=toIso && k<=today; k=addDaysIso(k,1)) keys.push(k);
+  return keys;
+}
+function fmtRangeLabel(f,t){
+  const fmt=(iso)=> new Date(iso+'T00:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+  return `${fmt(f)} – ${fmt(t)}`;
+}
+async function computeRange(fromIso,toIso){
+  const keys = keysForRange(fromIso,toIso);
+  const { totals, maxPossibleByStudent, udzurCounts } = await computeGroupStatsForDates(clipKeysToAppStart(keys));
+  const rows = state.students.map(s=>{
+    const maxPossible = maxPossibleByStudent[s.id]||0;
+    const doneSum = totals[s.id]||0;
+    const pct = maxPossible ? Math.round(doneSum/maxPossible*1000)/10 : 0;
+    return {...s, doneSum, maxPossible, pct, udzurDays: udzurCounts[s.id]||0};
+  });
+  rows.sort((a,b)=> b.pct-a.pct || a.name.localeCompare(b.name));
+  return { rows, lastDay: keys.length };
+}
+function groupTag(){ return {banin:' — Banin', banat:' — Banat'}[state.recapGroup] || ''; }
+function filterRecapResult(res,g){
+  if(!res || !g || g==='all') return res;
+  const rows = res.rows.filter(r=>r.group===g);
+  const out = {...res, rows};
+  if(res.map){ out.map = {}; rows.forEach(r=>{ out.map[r.id]=r; }); }
+  return out;
+}
+function applyRecapFilter(){
+  const raw = state.recapRaw; if(!raw) return;
+  const g = state.recapGroup || 'all';
+  state.monthlyResult = filterRecapResult(raw.cur,g);
+  state.prevResult = filterRecapResult(raw.prev,g);
+  if(state.recapStudentId && !state.monthlyResult.rows.some(r=>r.id===state.recapStudentId)) state.recapStudentId = null;
+}
+function buildAdminRangeWaReport(rows,label){
+  const L=['REKAP AMALIYAH HARIAN SANTRI', SCHOOL_NAME, `Periode: ${label}`, ''];
+  rows.forEach((r,i)=> L.push(`${i+1}. ${r.name} — ${r.pct}% (${gradeLetter(r.pct)})`));
+  L.push('', GRADE_SCALE_TEXT);
+  return L.join('\n');
+}
 function dateKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 function mondayOf(dateStr){
   const d = new Date(dateStr+'T00:00:00');
@@ -933,6 +976,12 @@ const ATTENTION_STREAK = 3;  // tidak mengisi >= 3 hari aktif berturut-turut
 const ATTENTION_CRITERIA = `Kriteria: nilai D, atau turun ≥ ${ATTENTION_DROP} poin dari periode sebelumnya, atau tidak mengisi ≥ ${ATTENTION_STREAK} hari aktif berturut-turut. Hari saat tidak ada satu pun santri mengisi (mis. libur) dan hari ini tidak dihitung.`;
 function round1(x){ return Math.round(x*10)/10; }
 function prevPeriodValue(period, value){
+  if(period==='rentang'){
+    const [f,t] = value.split('_');
+    const N = Math.round((new Date(t+'T00:00:00')-new Date(f+'T00:00:00'))/86400000)+1;
+    const pt = addDaysIso(f,-1);
+    return `${addDaysIso(pt,-(N-1))}_${pt}`;
+  }
   if(period==='bulanan'){
     const [y,m] = value.split('-').map(Number);
     const d = new Date(y, m-2, 1);
@@ -943,8 +992,8 @@ function prevPeriodValue(period, value){
 }
 async function computePrevious(period, value){
   const pv = prevPeriodValue(period, value);
-  const res = period==='bulanan' ? await computeMonthly(pv) : await computeWeekly(pv);
-  const label = period==='bulanan' ? monthLabelId(pv) : weekRangeLabel(pv);
+  const res = period==='bulanan' ? await computeMonthly(pv) : (period==='rentang' ? await computeRange(...pv.split('_')) : await computeWeekly(pv));
+  const label = period==='bulanan' ? monthLabelId(pv) : (period==='rentang' ? fmtRangeLabel(...pv.split('_')) : weekRangeLabel(pv));
   const map = {};
   res.rows.forEach(r=>{ map[r.id] = r; });
   return { rows: res.rows, map, label, period };
@@ -1063,6 +1112,57 @@ function trendSummaryHtml(series){
   </div>`;
 }
 
+/* ---------------- Tindak lanjut wali kelas & pengingat orang tua ---------------- */
+const FU_DEFAULT = 'Belum ditindaklanjuti';
+const FU_STATUS = [FU_DEFAULT,'Sudah dipanggil','Orang tua dihubungi','Sedang dipantau','Selesai'];
+function currentPeriodValue(){
+  if(state.recapPeriod==='rentang') return `${state.rangeFrom}_${state.rangeTo}`;
+  return (state.recapPeriod||'bulanan')==='bulanan' ? (state.monthYear||currentYm()) : (state.weekStart||mondayOf(todayKey()));
+}
+function currentPeriodLabel(){
+  const v = currentPeriodValue();
+  if(state.recapPeriod==='rentang') return fmtRangeLabel(...v.split('_'));
+  return (state.recapPeriod||'bulanan')==='bulanan' ? monthLabelId(v) : weekRangeLabel(v);
+}
+function followupKeyFor(){ return `followup-${state.recapPeriod||'bulanan'}-${currentPeriodValue()}`; }
+function fuOf(sid){ return (state.followups && state.followups[sid]) || null; }
+function fuText(sid){
+  const f = fuOf(sid);
+  if(!f) return FU_DEFAULT;
+  return f.note ? `${f.status||FU_DEFAULT} — ${f.note}` : (f.status||FU_DEFAULT);
+}
+function fuDoneCount(list){ return list.filter(a=>{ const f=fuOf(a.row.id); return f && f.status && f.status!==FU_DEFAULT; }).length; }
+async function saveFollowup(sid, patch){
+  const cur = state.followups || {};
+  cur[sid] = { ...(cur[sid]||{}), ...patch, updated: todayKey() };
+  state.followups = cur;
+  const ok = await storeSet(followupKeyFor(), cur);
+  showToast(ok ? 'Tindak lanjut disimpan' : 'Gagal menyimpan, coba lagi');
+}
+function buildParentReminder(row, student, detail){
+  const per = state.recapPeriod==='rentang' ? 'periode' : ((state.recapPeriod||'bulanan')==='bulanan' ? 'bulan' : 'pekan');
+  const att = computeAttention([row])[0];
+  const L = [waGreeting(), '', `Kami dari ${SCHOOL_NAME} ingin menyampaikan perkembangan amaliyah harian ananda ${student.name}.`, ''];
+  const letter = gradeLetter(row.pct);
+  L.push(`Selama ${per} ${currentPeriodLabel()}, ananda menyelesaikan ${row.doneSum}/${row.maxPossible} amaliyah (${row.pct}%, predikat ${letter}).`);
+  if(att){
+    att.reasons.forEach(x=>{
+      if(x.k==='streak') L.push(`Dalam beberapa hari terakhir ananda belum mengisi amaliyah hariannya.`);
+      if(x.k==='drop') L.push(`Capaian ananda menurun dibanding ${state.prevResult.label}.`);
+    });
+  }
+  if(detail && detail.length){
+    const c = classifyAmal(detail);
+    const need = c.never.concat(c.least).slice(0,4);
+    if(need.length){ L.push(''); L.push('Amaliyah yang perlu didampingi:'); need.forEach(t=> L.push(`• ${t.name}`)); }
+  }
+  L.push('');
+  L.push('Mohon dukungan Ayah/Bunda untuk mengingatkan dan mendampingi ananda di rumah. Kami siap berdiskusi bila diperlukan.');
+  L.push('');
+  L.push("Jazakumullahu khairan.\nWassalamu'alaikum warahmatullahi wabarakatuh.");
+  return L.join('\n');
+}
+
 function buildPrincipalSummary(rows, detail, periodWord, label){
   const L = [];
   const d = gradeDistribution(rows);
@@ -1100,8 +1200,8 @@ function buildPrincipalSummary(rows, detail, periodWord, label){
   });
   const att = computeAttention(rows);
   if(att.length){
-    L.push(`🔔 Santri yang perlu pendampingan (${att.length} santri):`);
-    att.forEach((a,i)=> L.push(`   ${i+1}. ${a.row.name} (${a.row.group==='banin'?'Banin':'Banat'}, ${a.row.pct}%) — ${a.reasons.map(x=>x.t).join('; ')}`));
+    L.push(`🔔 Santri yang perlu pendampingan (${att.length} santri, ${fuDoneCount(att)} sudah ditindaklanjuti):`);
+    att.forEach((a,i)=> L.push(`   ${i+1}. ${a.row.name} (${a.row.group==='banin'?'Banin':'Banat'}, ${a.row.pct}%) — ${a.reasons.map(x=>x.t).join('; ')}\n      Tindak lanjut: ${fuText(a.row.id)}`));
     L.push('');
   } else {
     L.push('✅ Tidak ada santri yang memerlukan pendampingan khusus pada periode ini.');
@@ -1156,9 +1256,9 @@ function exportRecapExcel(rows, period, label, detail){
   if(attList.length){
     const wsA = XLSX.utils.json_to_sheet(attList.map((a,i)=>({
       'No': i+1, 'Nama': a.row.name, 'Kelompok': a.row.group==='banin'?'Banin':'Banat',
-      'Persentase': a.row.pct, 'Nilai': gradeLetter(a.row.pct), 'Alasan': a.reasons.map(x=>x.t).join('; ')
+      'Persentase': a.row.pct, 'Nilai': gradeLetter(a.row.pct), 'Alasan': a.reasons.map(x=>x.t).join('; '), 'Tindak Lanjut': fuText(a.row.id)
     })));
-    wsA['!cols'] = [{wch:4},{wch:26},{wch:10},{wch:12},{wch:8},{wch:70}];
+    wsA['!cols'] = [{wch:4},{wch:26},{wch:10},{wch:12},{wch:8},{wch:70},{wch:50}];
     XLSX.utils.book_append_sheet(wb, wsA, 'Perlu Pendampingan');
   }
   if(detail){
@@ -1179,7 +1279,7 @@ function exportRecapExcel(rows, period, label, detail){
     if(state.prevResult){
       aoa.push([]);
       aoa.push(['Perbandingan Rata-rata','Sekarang (%)','Periode Lalu (%)','Selisih (poin)','Periode Pembanding']);
-      [['banin','Banin'],['banat','Banat']].forEach(([g,nm])=>{
+      [['banin','Banin'],['banat','Banat']].filter(([g])=>rows.some(r=>r.group===g)).forEach(([g,nm])=>{
         const ci = compareInfo(rows, g);
         aoa.push([nm, ci.cur===null?'':ci.cur, ci.prev===null?'':ci.prev, ci.delta===null?'':ci.delta, state.prevResult.label]);
       });
@@ -1193,7 +1293,7 @@ function exportRecapExcel(rows, period, label, detail){
     ws3['!cols'] = [{wch:14},{wch:32},{wch:16},{wch:8},{wch:30}];
     XLSX.utils.book_append_sheet(wb, ws3, 'Ringkasan');
   }
-  XLSX.writeFile(wb, `rekap-amaliyah-${period==='bulanan'?label:'mingguan-'+label}.xlsx`);
+  XLSX.writeFile(wb, `rekap-amaliyah-${period==='bulanan'?label:(period==='rentang'?'rentang-':'mingguan-')+label}${(state.recapGroup&&state.recapGroup!=='all')?'-'+state.recapGroup:''}.xlsx`);
   showToast('File Excel diunduh');
 }
 function printRecapPdf(rows, periodLabel, detail){
@@ -1215,7 +1315,7 @@ function printRecapPdf(rows, periodLabel, detail){
   if(state.prevResult){
     compareHtml = `<h2>Perbandingan dengan ${escapeHtml(state.prevResult.label)}</h2>
       <table style="width:auto;"><tr><th>Kelompok</th><th>Sekarang</th><th>Periode lalu</th><th>Selisih (poin)</th></tr>` +
-      [['banin','Banin'],['banat','Banat']].map(([g,nm])=>{
+      [['banin','Banin'],['banat','Banat']].filter(([g])=>rows.some(r=>r.group===g)).map(([g,nm])=>{
         const ci = compareInfo(rows, g);
         return `<tr><td>${nm}</td><td>${ci.cur===null?'-':ci.cur+'%'}</td><td>${ci.prev===null?'-':ci.prev+'%'}</td><td>${deltaPlain(ci.delta)}</td></tr>`;
       }).join('') + `</table>`;
@@ -1223,8 +1323,8 @@ function printRecapPdf(rows, periodLabel, detail){
   const attList = computeAttention(rows);
   const attentionHtml = attList.length
     ? `<h2>Santri yang Perlu Pendampingan (${attList.length})</h2>
-       <table><tr><th>#</th><th>Nama</th><th>Kelompok</th><th>%</th><th>Nilai</th><th>Alasan</th></tr>` +
-       attList.map((a,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(a.row.name)}</td><td>${a.row.group==='banin'?'Banin':'Banat'}</td><td>${a.row.pct}%</td><td class="g ${gradeLetter(a.row.pct)}">${gradeLetter(a.row.pct)}</td><td>${escapeHtml(a.reasons.map(x=>x.t).join('; '))}</td></tr>`).join('') +
+       <table><tr><th>#</th><th>Nama</th><th>Kelompok</th><th>%</th><th>Nilai</th><th>Alasan</th><th>Tindak lanjut</th></tr>` +
+       attList.map((a,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(a.row.name)}</td><td>${a.row.group==='banin'?'Banin':'Banat'}</td><td>${a.row.pct}%</td><td class="g ${gradeLetter(a.row.pct)}">${gradeLetter(a.row.pct)}</td><td>${escapeHtml(a.reasons.map(x=>x.t).join('; '))}</td><td>${escapeHtml(fuText(a.row.id))}</td></tr>`).join('') +
        `</table><p>${escapeHtml(ATTENTION_CRITERIA)}</p>`
     : `<h2>Santri yang Perlu Pendampingan</h2><p>Tidak ada santri yang memerlukan pendampingan khusus pada periode ini.</p>`;
   const rowsHtml = rows.map((r,i)=>{
@@ -1284,6 +1384,7 @@ function printStudentPdf(student, row, detail, periodLabel){
   openPrintWindow(html);
 }
 function keysForPeriod(period, periodValue){
+  if(period==='rentang'){ const [f,t]=periodValue.split('_'); return keysForRange(f,t); }
   if(period==='mingguan'){
     const start = new Date(periodValue+'T00:00:00');
     const now = new Date();
@@ -1944,37 +2045,29 @@ function renderAttentionCard(rows){
     return `<div class="amal-box good"><h4>✅ Tidak ada santri yang perlu pendampingan khusus</h4><span class="muted" style="font-size:12.5px;">${ATTENTION_CRITERIA}</span></div>`;
   }
   return `<div class="amal-box bad">
-    <h4>🔔 Perlu Pendampingan (${list.length} santri)</h4>
-    ${list.map(a=>`
-      <div class="srow">
+    <h4>🔔 Perlu Pendampingan (${list.length} santri • ${fuDoneCount(list)} sudah ditindaklanjuti)</h4>
+    ${list.map(a=>{
+      const f = fuOf(a.row.id) || {};
+      return `
+      <div class="srow" style="align-items:flex-start;">
         <div style="flex:1;min-width:0;">
           <div class="sname">${escapeHtml(a.row.name)}</div>
           <div class="muted">${a.row.group==='banin'?'Banin':'Banat'} • ${a.row.pct}%</div>
           <div>${a.reasons.map(x=>`<span class="pill gD" style="margin:3px 4px 0 0;background:#fff;">${escapeHtml(x.t)}</span>`).join('')}</div>
+          <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap;">
+            <select data-fu-status="${a.row.id}" style="max-width:190px;">
+              ${FU_STATUS.map(s=>`<option ${ (f.status||FU_DEFAULT)===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+            <input data-fu-note="${a.row.id}" placeholder="Catatan wali kelas…" value="${escapeHtml(f.note||'')}" style="flex:1;min-width:140px;">
+          </div>
         </div>
-        <button class="icon-btn" data-detail-student="${a.row.id}" title="Lihat detail santri ini">📊</button>
-      </div>`).join('')}
-    <p class="muted" style="margin:10px 0 0;font-size:12.5px;">${ATTENTION_CRITERIA}</p>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <button class="icon-btn" data-detail-student="${a.row.id}" title="Lihat detail santri ini">📊</button>
+          <button class="icon-btn" data-remind-student="${a.row.id}" title="Salin pesan pengingat untuk orang tua">💬</button>
+        </div>
+      </div>`; }).join('')}
+    <p class="muted" style="margin:10px 0 0;font-size:12.5px;">${ATTENTION_CRITERIA} Tombol 💬 menyalin pesan WhatsApp pengingat untuk orang tua.</p>
   </div>`;
-}
-function renderAmalGroupCard(label, group){
-  const agg = aggregateAmal(group, state.amalDetail);
-  if(!agg.length) return '';
-  const c = classifyAmal(agg);
-  const list = (arr)=> arr.length ? arr.map(t=>`${escapeHtml(t.name)} (${t.pct}%)`).join(', ') : '-';
-  return `
-  <div class="section-title">PERSENTASE AMALIYAH — ${label.toUpperCase()}</div>
-  <div class="scroll-x"><table>
-    <tr><th>Amaliyah</th><th>Pelaksanaan</th><th>Nilai</th><th>Santri tidak pernah</th></tr>
-    ${agg.map(t=>`<tr>
-      <td>${escapeHtml(t.name)}</td>
-      <td><div class="row" style="gap:8px;"><div class="sprog"><div style="width:${t.pct}%"></div></div><span>${t.pct}%</span></div></td>
-      <td><span class="pill g${gradeLetter(t.pct)}">${gradeLetter(t.pct)}</span></td>
-      <td>${t.studentsNever}/${t.students}</td></tr>`).join('')}
-  </table></div>
-  <div class="amal-box good" style="margin-top:10px;"><h4>✅ Paling sering dilakukan</h4>${list(c.most)}</div>
-  <div class="amal-box warn"><h4>⚠️ Paling jarang dilakukan</h4>${list(c.least)}</div>
-  <div class="amal-box bad"><h4>❌ Tidak pernah dilakukan siapa pun</h4>${c.never.length ? c.never.map(t=>escapeHtml(t.name)).join(', ') : 'Tidak ada'}</div>`;
 }
 function renderStudentAmalDetail(rows){
   const sel = state.recapStudentId;
@@ -1999,7 +2092,7 @@ function renderStudentAmalDetail(rows){
     : `<div class="detail-row"><span>Dibanding periode lalu</span><b class="muted">belum ada data pembanding</b></div>`) + `</div>`;
   const att = computeAttention([row])[0];
   const attHtml = att ? `<div class="amal-box bad"><h4>🔔 Perlu pendampingan</h4>${att.reasons.map(x=>`<div>• ${escapeHtml(x.t)}</div>`).join('')}</div>` : '';
-  const isMonthly = (state.recapPeriod || 'bulanan')==='bulanan';
+  const isMonthly = (state.recapPeriod || 'bulanan')!=='mingguan';
   const mode = isMonthly ? (state.trendMode || 'daily') : 'daily';
   const series = poolSeries(state.amalDetail, [sel], mode);
   const gseries = poolSeries(state.amalDetail, state.students.filter(s=>s.group===row.group).map(s=>s.id), mode);
@@ -2102,10 +2195,18 @@ function renderAdminMonthly(){
       <select id="recapPeriodSelect" style="max-width:130px;">
         <option value="bulanan" ${period==='bulanan'?'selected':''}>Bulanan</option>
         <option value="mingguan" ${period==='mingguan'?'selected':''}>Mingguan</option>
+        <option value="rentang" ${period==='rentang'?'selected':''}>Rentang tanggal</option>
+      </select>
+      <select id="recapGroupSelect" style="max-width:140px;">
+        <option value="all" ${(state.recapGroup||'all')==='all'?'selected':''}>Semua kelompok</option>
+        <option value="banin" ${state.recapGroup==='banin'?'selected':''}>Banin saja</option>
+        <option value="banat" ${state.recapGroup==='banat'?'selected':''}>Banat saja</option>
       </select>
       ${period==='bulanan'
         ? `<input type="month" id="monthPicker" value="${defaultYm}" style="max-width:170px;">`
-        : `<input type="date" id="weekPicker" value="${defaultWeekStart}" style="max-width:170px;">`}
+        : (period==='rentang'
+          ? `<input type="date" id="rangeFrom" value="${state.rangeFrom||(currentYm()+'-01')}" style="max-width:150px;"><span class="muted">s/d</span><input type="date" id="rangeTo" value="${state.rangeTo||todayKey()}" style="max-width:150px;">`
+          : `<input type="date" id="weekPicker" value="${defaultWeekStart}" style="max-width:170px;">`)}
       <button class="btn btn-primary" id="showMonthlyBtn">Tampilkan</button>
     </div>
     ${period==='mingguan' ? `<p class="muted" style="margin:0 0 12px;">Minggu: ${weekRangeLabel(defaultWeekStart)} (Senin–Ahad, pilih tanggal mana saja pada minggu tsb)</p>` : ''}
@@ -2469,12 +2570,21 @@ function attachAdminEvents(){
         const ym = document.getElementById('monthPicker').value;
         state.monthYear = ym;
         state.monthlyResult = await computeMonthly(ym);
+      } else if(period==='rentang'){
+        const f = document.getElementById('rangeFrom').value, t = document.getElementById('rangeTo').value;
+        const N = f && t ? Math.round((new Date(t+'T00:00:00')-new Date(f+'T00:00:00'))/86400000)+1 : 0;
+        if(N<1 || N>186){
+          showToast(N<1 ? 'Isi tanggal dengan benar (dari ≤ sampai)' : 'Rentang maksimal 186 hari (± 6 bulan)');
+          e.target.textContent = 'Tampilkan'; e.target.disabled = false; return;
+        }
+        state.rangeFrom = f; state.rangeTo = t;
+        state.monthlyResult = await computeRange(f, t);
       } else {
         const picked = document.getElementById('weekPicker').value;
         state.weekStart = mondayOf(picked);
         state.monthlyResult = await computeWeekly(state.weekStart);
       }
-      const periodValue = period==='bulanan' ? state.monthYear : state.weekStart;
+      const periodValue = period==='bulanan' ? state.monthYear : (period==='rentang' ? `${state.rangeFrom}_${state.rangeTo}` : state.weekStart);
       state.amalDetail = null; state.prevResult = null;
       try{
         state.amalDetail = await computeAmalDetail(clipKeysToAppStart(keysForPeriod(period, periodValue)));
@@ -2482,13 +2592,18 @@ function attachAdminEvents(){
       try{
         state.prevResult = await computePrevious(period, periodValue);
       }catch(err){ console.error('computePrevious error', err); state.prevResult = null; }
+      try{ state.followups = (await storeGet(followupKeyFor())) || {}; }catch(err){ state.followups = {}; }
+      state.recapRaw = { cur: state.monthlyResult, prev: state.prevResult };
+      applyRecapFilter();
       render();
     };
     const copyBtn = document.getElementById('copyMonthlyWaBtn');
     if(copyBtn){
       copyBtn.onclick = async ()=>{
         const period = state.recapPeriod || 'bulanan';
-        const text = period==='bulanan'
+        const text = period==='rentang'
+          ? buildAdminRangeWaReport(state.monthlyResult.rows, currentPeriodLabel()+groupTag())
+          : period==='bulanan'
           ? buildAdminWaReport(state.monthlyResult.rows, state.monthYear || currentYm())
           : buildAdminWeeklyWaReport(state.monthlyResult.rows, state.weekStart || mondayOf(todayKey()));
         const ok = await copyToClipboard(text);
@@ -2499,7 +2614,7 @@ function attachAdminEvents(){
     if(exportExcelBtn){
       exportExcelBtn.onclick = ()=>{
         const period = state.recapPeriod || 'bulanan';
-        const label = period==='bulanan' ? (state.monthYear || currentYm()) : (state.weekStart || mondayOf(todayKey()));
+        const label = period==='bulanan' ? (state.monthYear || currentYm()) : (period==='rentang' ? currentPeriodValue() : (state.weekStart || mondayOf(todayKey())));
         exportRecapExcel(state.monthlyResult.rows, period, label, state.amalDetail);
       };
     }
@@ -2507,7 +2622,7 @@ function attachAdminEvents(){
     if(printPdfBtn){
       printPdfBtn.onclick = ()=>{
         const period = state.recapPeriod || 'bulanan';
-        const label = period==='bulanan' ? monthLabelId(state.monthYear || currentYm()) : `Minggu ${weekRangeLabel(state.weekStart || mondayOf(todayKey()))}`;
+        const label = (period==='rentang' ? currentPeriodLabel() : period==='bulanan' ? monthLabelId(state.monthYear || currentYm()) : `Minggu ${weekRangeLabel(state.weekStart || mondayOf(todayKey()))}`) + groupTag();
         printRecapPdf(state.monthlyResult.rows, label, state.amalDetail);
       };
     }
@@ -2548,7 +2663,7 @@ function attachAdminEvents(){
   }
   if(state.adminTab==='monthly'){
     const curPeriod = () => state.recapPeriod || 'bulanan';
-    const curLabel = () => curPeriod()==='bulanan' ? monthLabelId(state.monthYear || currentYm()) : `Minggu ${weekRangeLabel(state.weekStart || mondayOf(todayKey()))}`;
+    const curLabel = () => curPeriod()==='rentang' ? currentPeriodLabel() : curPeriod()==='bulanan' ? monthLabelId(state.monthYear || currentYm()) : `Minggu ${weekRangeLabel(state.weekStart || mondayOf(todayKey()))}`;
     document.querySelectorAll('[data-recap-view]').forEach(el=>{
       el.onclick = ()=>{ state.recapView = el.dataset.recapView; render(); };
     });
@@ -2564,6 +2679,24 @@ function attachAdminEvents(){
     document.querySelectorAll('[data-trend-mode]').forEach(el=>{
       el.onclick = ()=>{ state.trendMode = el.dataset.trendMode; render(); };
     });
+    document.querySelectorAll('[data-fu-status]').forEach(el=>{
+      el.onchange = ()=> saveFollowup(el.dataset.fuStatus, { status: el.value });
+    });
+    document.querySelectorAll('[data-fu-note]').forEach(el=>{
+      el.onchange = ()=> saveFollowup(el.dataset.fuNote, { note: el.value.trim() });
+    });
+    document.querySelectorAll('[data-remind-student]').forEach(el=>{
+      el.onclick = async ()=>{
+        const sid = el.dataset.remindStudent;
+        const row = state.monthlyResult.rows.find(r=>r.id===sid);
+        const student = state.students.find(s=>s.id===sid);
+        if(!row || !student) return;
+        const ok = await copyToClipboard(buildParentReminder(row, student, state.amalDetail && state.amalDetail.perStudent[sid]));
+        showToast(ok ? 'Pesan pengingat disalin' : 'Gagal menyalin, coba lagi');
+      };
+    });
+    const groupSel = document.getElementById('recapGroupSelect');
+    if(groupSel){ groupSel.onchange = ()=>{ state.recapGroup = groupSel.value; applyRecapFilter(); render(); }; }
     const studentSelect = document.getElementById('recapStudentSelect');
     if(studentSelect){
       studentSelect.onchange = ()=>{ state.recapStudentId = studentSelect.value || null; render(); };
@@ -2571,7 +2704,7 @@ function attachAdminEvents(){
     const principalBtn = document.getElementById('copyPrincipalBtn');
     if(principalBtn){
       principalBtn.onclick = async ()=>{
-        const text = buildPrincipalSummary(state.monthlyResult.rows, state.amalDetail, curPeriod()==='bulanan'?'Bulan':'Minggu', curLabel().replace(/^Minggu /,''));
+        const text = buildPrincipalSummary(state.monthlyResult.rows, state.amalDetail, curPeriod()==='bulanan'?'Bulan':(curPeriod()==='rentang'?'Periode':'Minggu'), curLabel().replace(/^Minggu /,'')+groupTag());
         const ok = await copyToClipboard(text);
         showToast(ok ? 'Ringkasan disalin ke clipboard' : 'Gagal menyalin, coba lagi');
       };
