@@ -488,6 +488,12 @@ let state = {
   students:[],
   tasks:[],
   credentials:{...DEFAULT_CREDENTIALS},
+  walasAccounts:[],
+  walasId:null,
+  walasTab:'today',
+  walasRecap:null,
+  walasRecapYm:null,
+  walasMsg:'',
   adminTab:'today',
   expandedStudent:null,
   editingTaskId:null,
@@ -721,6 +727,8 @@ async function initApp(){
     credentials = JSON.parse(JSON.stringify(DEFAULT_CREDENTIALS));
     await storeSet('credentials', credentials);
   }
+  let walasAccounts = await storeGet('walas-accounts');
+  if(!Array.isArray(walasAccounts)) walasAccounts = [];
   let saranList = await storeGet('saran');
   if(!saranList) saranList = [];
   let appScriptUrl = await storeGet('appscript-url');
@@ -730,6 +738,7 @@ async function initApp(){
   state.students = students;
   state.tasks = tasks;
   state.credentials = credentials;
+  state.walasAccounts = walasAccounts;
   state.saranList = saranList;
   state.appScriptUrl = appScriptUrl || '';
   state.featureFlags = Object.assign({leaderboard:false, photo:false, analytics:false}, featureFlags||{});
@@ -737,7 +746,13 @@ async function initApp(){
   state.appStartDate = appStartDate || '';
 
   const remembered = await storeGet('remembered-role', false);
-  if(remembered && credentials[remembered]){
+  const rememberedWalas = (typeof remembered==='string' && remembered.startsWith('walas:')) ? walasAccounts.find(a=>a.id===remembered.slice(6)) : null;
+  if(rememberedWalas){
+    state.role = 'walas'; state.walasId = rememberedWalas.id;
+    await loadTodayChecklist();
+    state.screen='walas'; state.walasTab='today'; startTodayPolling();
+    fetchIshaTime().then(render);
+  } else if(remembered && credentials[remembered]){
     state.role = remembered;
     await loadTodayChecklist();
     if(remembered==='admin'){ state.screen='admin'; state.adminTab='today'; startTodayPolling(); }
@@ -1611,7 +1626,8 @@ async function loadProfile(child, ym){
 function startTodayPolling(){
   stopTodayPolling();
   pollTimer = setInterval(async ()=>{
-    if(!(state.screen==='admin' && state.adminTab==='today')){ stopTodayPolling(); return; }
+    const onToday = (state.screen==='admin' && state.adminTab==='today') || (state.screen==='walas' && state.walasTab==='today');
+    if(!onToday){ stopTodayPolling(); return; }
     await loadTodayChecklist();
     render();
   }, 6000);
@@ -1636,14 +1652,24 @@ async function doLogin(){
     else { state.screen='parent'; state.selectedChildId=null; state.parentTab='pilih'; }
     fetchIshaTime().then(render);
   } else {
-    state.loginError = 'ID atau password salah, silakan coba lagi.';
+    const wa = state.walasAccounts.find(a=>String(a.username||'').toLowerCase()===idInput);
+    if(wa && wa.password===pwInput){
+      state.role='walas'; state.walasId=wa.id; state.loginError='';
+      await loadTodayChecklist();
+      if(remember){ await storeSet('remembered-role', 'walas:'+wa.id, false); }
+      state.screen='walas'; state.walasTab='today'; state.expandedStudent=null; state.walasRecap=null;
+      startTodayPolling();
+      fetchIshaTime().then(render);
+    } else {
+      state.loginError = 'ID atau password salah, silakan coba lagi.';
+    }
   }
   render();
 }
 async function doLogout(){
   stopTodayPolling();
   await storeSet('remembered-role', null, false);
-  state.role=null; state.screen='login'; state.loginError='';
+  state.role=null; state.walasId=null; state.walasRecap=null; state.expandedStudent=null; state.screen='login'; state.loginError='';
   render();
 }
 function isIshaTimeReached(){
@@ -1883,11 +1909,12 @@ function render(){
   if(state.screen==='loading'){ app.innerHTML = `<div class="wrap"><p class="muted" style="padding-top:40px;text-align:center;">Memuat…</p></div>`; return; }
   if(state.screen==='login'){ app.innerHTML = renderLogin(); attachLoginEvents(); return; }
   if(state.screen==='admin'){ app.innerHTML = renderAdmin(); attachAdminEvents(); return; }
+  if(state.screen==='walas'){ app.innerHTML = renderWalas(); attachWalasEvents(); return; }
   if(state.screen==='parent'){ app.innerHTML = renderParent(); attachParentEvents(); return; }
 }
 
 function renderTopbar(){
-  const roleLabel = state.role==='admin' ? 'Guru / Admin' : (state.role==='banin' ? 'Wali Murid — Banin' : 'Wali Murid — Banat');
+  const roleLabel = state.role==='admin' ? 'Guru / Admin' : (state.role==='walas' ? walasLabel() : (state.role==='banin' ? 'Wali Murid — Banin' : 'Wali Murid — Banat'));
   return `
   <div class="topbar">
     <button id="menuToggle" aria-label="Menu">☰</button>
@@ -2490,6 +2517,7 @@ function renderAdminSettings(){
   const c = state.credentials;
   const blocks = [['admin','Guru / Admin'],['banin','Wali Murid Banin'],['banat','Wali Murid Banat']];
   return `
+  ${renderWalasAdminCard()}
   <div class="card" style="max-width:440px;">
     <h3 style="margin-top:0;font-size:16px;">Info Login</h3>
     ${blocks.map(([key,label])=>`
@@ -2989,6 +3017,7 @@ function attachAdminEvents(){
     });
   }
   if(state.adminTab==='settings'){
+    attachWalasAdminEvents();
     document.getElementById('saveCredsBtn').onclick = ()=>{
       const newCreds = {};
       ['admin','banin','banat'].forEach(key=>{
@@ -3038,6 +3067,193 @@ function attachAdminEvents(){
       showToast('Pengaturan fitur tersimpan');
     };
   }
+}
+
+/* ================= Wali Kelas ================= */
+function walasAccount(){ return state.walasAccounts.find(a=>a.id===state.walasId) || null; }
+function walasLabel(){
+  const a = walasAccount();
+  if(!a) return 'Wali Kelas';
+  return `Wali Kelas ${a.kelas} ${a.group==='banin'?'Banin':'Banat'}`;
+}
+function kelasMatch(studentKelas, walasKelas){
+  const k = String(studentKelas||'').trim().toUpperCase();
+  const w = String(walasKelas||'').trim().toUpperCase();
+  return !!w && k.startsWith(w);
+}
+function walasStudentsOf(a){ return a ? state.students.filter(s=>s.group===a.group && kelasMatch(s.kelas, a.kelas)) : []; }
+function walasStudentIds(){ return new Set(walasStudentsOf(walasAccount()).map(s=>s.id)); }
+
+function renderWalas(){
+  const tabs = [['today','Hari Ini'],['recap','Rekap']];
+  const body = state.walasTab==='recap' ? renderWalasRecap() : renderWalasToday();
+  return `
+  ${renderTopbar()}
+  ${renderSidebar(tabs, state.walasTab, 'wtab')}
+  <div class="wrap wide" style="padding-top:20px;">${body}</div>`;
+}
+function renderWalasToday(){
+  const a = walasAccount();
+  const ids = walasStudentIds();
+  if(!a) return '<div class="card"><div class="empty">Akun wali kelas tidak ditemukan.</div></div>';
+  if(ids.size===0) return `<div class="card"><div class="empty">Belum ada santri yang terdaftar di kelas ${escapeHtml(a.kelas)} ${a.group==='banin'?'Banin':'Banat'}. Minta admin memeriksa data kelas santri.</div></div>`;
+  const all = rankList(a.group).filter(s=>ids.has(s.id));
+  const active = all.filter(s=>s.done>0);
+  const inactive = all.filter(s=>s.done===0).sort((x,y)=>x.name.localeCompare(y.name));
+  return `
+  <div class="row between" style="margin-bottom:2px;">
+    <p class="muted" style="margin:0;">Data diperbarui otomatis setiap beberapa detik.</p>
+    <button class="btn btn-ghost btn-sm" id="refreshTodayBtn">⟳ Refresh</button>
+  </div>
+  <div class="card" style="margin-top:10px;">
+    <div style="font-size:15px;"><b>${active.length}</b> dari <b>${all.length}</b> santri sudah mengisi hari ini</div>
+    <div class="sprog" style="margin-top:8px;"><div style="width:${Math.round(active.length/all.length*100)}%;"></div></div>
+  </div>
+  <div class="section-title">Belum Mengisi (${inactive.length})</div>
+  <div class="card">
+    ${inactive.length===0?'<div class="empty">Semua santri sudah mengisi 🎉</div>':inactive.map(s=>`
+      <div class="srow clickable" data-expand-student="${s.id}">
+        <div class="sname">${escapeHtml(s.name)}</div>
+        <div class="muted">${state.todayUdzur[s.id]?'Udzur':'Belum mengisi'}</div>
+      </div>
+      ${state.expandedStudent===s.id?renderDetailPanel(s):''}`).join('')}
+  </div>
+  <div class="section-title">Sudah Mengisi (${active.length})</div>
+  <div class="card">
+    ${active.length===0?'<div class="empty">Belum ada yang mengisi hari ini.</div>':active.map((s,i)=>renderTodayRow(s,i)).join('')}
+  </div>`;
+}
+function renderWalasRecap(){
+  const ym = state.walasRecapYm || currentYm();
+  const res = state.walasRecap;
+  let table = '<div class="card"><div class="empty">Pilih bulan lalu tekan "Tampilkan".</div></div>';
+  if(res){
+    const ids = walasStudentIds();
+    const rows = res.rows.filter(r=>ids.has(r.id));
+    const avg = rows.length ? Math.round(rows.reduce((t,r)=>t+r.pct,0)/rows.length*10)/10 : 0;
+    table = `
+    <div class="card">
+      <div style="font-size:15px;margin-bottom:8px;">Rata-rata kelas: <b>${avg}%</b> (${gradeLetter(avg)}) — ${rows.length} santri</div>
+      ${rows.length===0?'<div class="empty">Tidak ada data.</div>':rows.map((r,i)=>`
+        <div class="srow">
+          <div class="rank-badge ${i===0?'gold':''}">${rankBadge(i)}</div>
+          <div class="sname">${escapeHtml(r.name)}</div>
+          <div class="sfrac">${r.doneSum}/${r.maxPossible}</div>
+          <div>${gradePill(r.pct)}</div>
+        </div>`).join('')}
+    </div>`;
+  }
+  return `
+  <div class="card">
+    <div class="row" style="gap:10px;align-items:flex-end;flex-wrap:wrap;">
+      <div class="field" style="margin:0;"><label>Bulan</label><input type="month" id="walasMonthPicker" value="${ym}" style="max-width:170px;"></div>
+      <button class="btn btn-primary" id="walasRecapBtn">Tampilkan</button>
+    </div>
+  </div>
+  ${table}`;
+}
+function attachWalasEvents(){
+  attachSidebarEvents();
+  document.getElementById('logoutBtn').onclick = doLogout;
+  document.querySelectorAll('[data-wtab]').forEach(el=>{
+    el.onclick = ()=>{
+      state.walasTab = el.dataset.wtab; state.expandedStudent=null;
+      if(state.walasTab==='today'){ loadTodayChecklist().then(render); startTodayPolling(); }
+      else { stopTodayPolling(); render(); }
+    };
+  });
+  if(state.walasTab==='today'){
+    const rb = document.getElementById('refreshTodayBtn');
+    if(rb) rb.onclick = async ()=>{ await loadTodayChecklist(); render(); showToast('Diperbarui'); };
+    document.querySelectorAll('[data-expand-student]').forEach(el=>{
+      el.onclick = ()=>{ const id = el.dataset.expandStudent; state.expandedStudent = state.expandedStudent===id? null: id; render(); };
+    });
+  }
+  if(state.walasTab==='recap'){
+    document.getElementById('walasRecapBtn').onclick = async ()=>{
+      const ym = document.getElementById('walasMonthPicker').value || currentYm();
+      state.walasRecapYm = ym;
+      showToast('Menghitung rekap…');
+      state.walasRecap = await computeMonthly(ym);
+      render();
+    };
+  }
+}
+
+/* ---- Pengaturan akun wali kelas (sisi admin) ---- */
+function renderWalasAdminCard(){
+  const list = state.walasAccounts;
+  return `
+  <div class="card" style="max-width:440px;">
+    <h3 style="margin-top:0;font-size:16px;">Akun Wali Kelas</h3>
+    <p class="muted" style="margin:0 0 12px;line-height:1.55;">Setiap wali kelas hanya melihat santri di grup dan kelasnya. Isi kelas sesuai data santri (mis. <b>7</b> mencakup 7, 7A, 7B; <b>7A</b> hanya 7A).</p>
+    ${list.length===0?'<div class="empty">Belum ada akun wali kelas.</div>':list.map(a=>{
+      const n = walasStudentsOf(a).length;
+      return `<div class="list-edit-row">
+        <div class="nm">
+          <div>${escapeHtml(a.name)} — Kelas ${escapeHtml(a.kelas)} ${a.group==='banin'?'Banin':'Banat'}</div>
+          <div class="muted" style="font-size:12px;">ID: ${escapeHtml(a.username)} · Password: ${escapeHtml(a.password)} · ${n} santri</div>
+        </div>
+        <button class="icon-btn" data-edit-walas="${a.id}" title="Ubah password">✎</button>
+        <button class="icon-btn" data-del-walas="${a.id}" title="Hapus akun">✕</button>
+      </div>`;}).join('')}
+    <div class="cred-block" style="margin-top:14px;">
+      <h3>Tambah Wali Kelas</h3>
+      <div class="field"><label>Nama wali kelas</label><input type="text" id="walasName" placeholder="mis. Ust. Ahmad"></div>
+      <div class="row" style="gap:10px;">
+        <div class="field" style="flex:1;"><label>Grup</label>
+          <select id="walasGroup"><option value="banin">Banin</option><option value="banat">Banat</option></select></div>
+        <div class="field" style="flex:1;"><label>Kelas</label><input type="text" id="walasKelas" placeholder="mis. 7"></div>
+      </div>
+      <div class="row" style="gap:10px;">
+        <div class="field" style="flex:1;"><label>ID login</label><input type="text" id="walasUser" placeholder="mis. walas7banin"></div>
+        <div class="field" style="flex:1;"><label>Password</label><input type="text" id="walasPw" placeholder="password"></div>
+      </div>
+      ${state.walasMsg?`<p class="muted" style="color:var(--teal-dark);">${escapeHtml(state.walasMsg)}</p>`:''}
+      <button class="btn btn-primary btn-block" id="addWalasBtn">Tambah Akun Wali Kelas</button>
+    </div>
+  </div>`;
+}
+async function saveWalasAccounts(msg){
+  await storeSet('walas-accounts', state.walasAccounts);
+  state.walasMsg = msg || '';
+  render();
+}
+function attachWalasAdminEvents(){
+  const add = document.getElementById('addWalasBtn');
+  if(!add) return;
+  add.onclick = async ()=>{
+    const name = document.getElementById('walasName').value.trim();
+    const group = document.getElementById('walasGroup').value;
+    const kelas = document.getElementById('walasKelas').value.trim();
+    const username = document.getElementById('walasUser').value.trim();
+    const password = document.getElementById('walasPw').value;
+    if(!name || !kelas || !username || !password){ state.walasMsg='Semua kolom wajib diisi.'; render(); return; }
+    const lower = username.toLowerCase();
+    const clash = Object.values(state.credentials).some(c=>String(c.id).toLowerCase()===lower) ||
+                  state.walasAccounts.some(a=>String(a.username).toLowerCase()===lower);
+    if(clash){ state.walasMsg='ID tersebut sudah dipakai, pilih ID lain.'; render(); return; }
+    state.walasAccounts.push({ id:uid('w'), name, group, kelas, username, password });
+    await saveWalasAccounts('Akun wali kelas ditambahkan.');
+  };
+  document.querySelectorAll('[data-del-walas]').forEach(el=>{
+    el.onclick = async ()=>{
+      const a = state.walasAccounts.find(x=>x.id===el.dataset.delWalas);
+      if(!a || !confirm(`Hapus akun wali kelas ${a.name}?`)) return;
+      state.walasAccounts = state.walasAccounts.filter(x=>x.id!==a.id);
+      await saveWalasAccounts('Akun dihapus.');
+    };
+  });
+  document.querySelectorAll('[data-edit-walas]').forEach(el=>{
+    el.onclick = async ()=>{
+      const a = state.walasAccounts.find(x=>x.id===el.dataset.editWalas);
+      if(!a) return;
+      const pw = prompt(`Password baru untuk ${a.name}:`, a.password);
+      if(pw===null || pw==='') return;
+      a.password = pw;
+      await saveWalasAccounts('Password diperbarui.');
+    };
+  });
 }
 
 /* ================= Parent ================= */
