@@ -3076,10 +3076,22 @@ function walasLabel(){
   if(!a) return 'Wali Kelas';
   return `Wali Kelas ${a.kelas} ${a.group==='banin'?'Banin':'Banat'}`;
 }
+function normKelas(x){
+  let k = String(x||'').toUpperCase().replace(/KELAS/g,'').replace(/[\s\-_.]/g,'');
+  k = k.replace(/^VIII/,'8').replace(/^VII/,'7').replace(/^IX/,'9');
+  return k;
+}
 function kelasMatch(studentKelas, walasKelas){
-  const k = String(studentKelas||'').trim().toUpperCase();
-  const w = String(walasKelas||'').trim().toUpperCase();
-  return !!w && k.startsWith(w);
+  const k = normKelas(studentKelas), w = normKelas(walasKelas);
+  return !!w && !!k && k.startsWith(w);
+}
+function kelasDiagnosis(a){
+  const inGroup = state.students.filter(s=>s.group===a.group);
+  const counts = {};
+  inGroup.forEach(s=>{ const k = String(s.kelas||'').trim() || '(kosong)'; counts[k]=(counts[k]||0)+1; });
+  const txt = Object.keys(counts).sort().map(k=>`${k}: ${counts[k]}`).join(', ');
+  const allEmpty = inGroup.length>0 && inGroup.every(s=>!String(s.kelas||'').trim());
+  return { inGroup:inGroup.length, txt, allEmpty };
 }
 function walasStudentsOf(a){ return a ? state.students.filter(s=>s.group===a.group && kelasMatch(s.kelas, a.kelas)) : []; }
 function walasStudentIds(){ return new Set(walasStudentsOf(walasAccount()).map(s=>s.id)); }
@@ -3189,10 +3201,12 @@ function renderWalasAdminCard(){
     <p class="muted" style="margin:0 0 12px;line-height:1.55;">Setiap wali kelas hanya melihat santri di grup dan kelasnya. Isi kelas sesuai data santri (mis. <b>7</b> mencakup 7, 7A, 7B; <b>7A</b> hanya 7A).</p>
     ${list.length===0?'<div class="empty">Belum ada akun wali kelas.</div>':list.map(a=>{
       const n = walasStudentsOf(a).length;
-      return `<div class="list-edit-row">
+      const dg = n===0 ? kelasDiagnosis(a) : null;
+      return `<div class="list-edit-row" style="flex-wrap:wrap;">
         <div class="nm">
           <div>${escapeHtml(a.name)} — Kelas ${escapeHtml(a.kelas)} ${a.group==='banin'?'Banin':'Banat'}</div>
           <div class="muted" style="font-size:12px;">ID: ${escapeHtml(a.username)} · Password: ${escapeHtml(a.password)} · ${n} santri</div>
+          ${dg?`<div style="font-size:12px;color:var(--red);margin-top:4px;line-height:1.5;">Tidak ada santri yang cocok. Isian kelas santri ${a.group==='banin'?'Banin':'Banat'} saat ini → ${escapeHtml(dg.txt||'belum ada santri')}.${dg.allEmpty?' Semua kelas masih kosong: buka tab <b>Santri</b> lalu tekan <b>Impor data siswa kelas 7–9</b> (data lama tidak dihapus).':' Samakan isian kelas di akun ini dengan salah satu nilai di atas.'}</div>`:''}
         </div>
         <button class="icon-btn" data-edit-walas="${a.id}" title="Ubah password">✎</button>
         <button class="icon-btn" data-del-walas="${a.id}" title="Hapus akun">✕</button>
