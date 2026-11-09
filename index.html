@@ -362,6 +362,111 @@ const SEED_TASK_NAMES = [
   "Bangun sebelum Subuh","Shalat Tahajud","Shalat Subuh berjamaah","Tilawah Al-Qur'an",
   "Shalat 5 waktu tepat waktu","Membantu pekerjaan rumah","Belajar / mengulang pelajaran"
 ];
+const IMPORT_STUDENTS = [
+  ["banin", "7", "262707001", "Abdillah Ammar Al Fauzan"],
+  ["banin", "7", "262707002", "Ahmad Wildan Rasyid"],
+  ["banin", "7", "262707003", "Aqila Hamdan Al Fathan"],
+  ["banin", "7", "262707004", "Aqila Hamdan Al Fatih"],
+  ["banin", "7", "262707005", "Azlan Arkenzie Adiatmaja"],
+  ["banin", "7", "262707006", "Chairul Azzam Wijaya"],
+  ["banin", "7", "262707007", "Muhammad Emran Alafasy"],
+  ["banin", "7", "262707008", "Muhammad Zahwan Jubaidi"],
+  ["banin", "7", "262707009", "Raffaza Syaqif Pratama"],
+  ["banin", "7", "262707010", "Rashka Uno Kamil"],
+  ["banin", "7", "262707011", "Rayyan Iqra Mahmudy"],
+  ["banin", "7", "262707012", "Tsaqif Alfaruq Solichin"],
+  ["banat", "7", "262707013", "Abidah Fidziaritza"],
+  ["banat", "7", "262707014", "Aisyah Rahma Karenina"],
+  ["banat", "7", "262707015", "Alya Askana Sakhi"],
+  ["banat", "7", "262707016", "Annisa Gwen Inara"],
+  ["banat", "7", "262707017", "Arindi Nada Arcobaleno"],
+  ["banat", "7", "262707018", "Athiya Ufairah"],
+  ["banat", "7", "262707019", "Filza Noor Hanifa"],
+  ["banat", "7", "262707020", "Filza Salsabila Fadhilah"],
+  ["banat", "7", "262707021", "Haura Nafisah"],
+  ["banat", "7", "262707022", "Jalilla Dhessafa Alfariji"],
+  ["banat", "7", "262707023", "Maryam Zahida Aristi"],
+  ["banat", "7", "262707024", "Nasywa Almeera Khanza"],
+  ["banat", "7", "262707025", "Quisha Zahidah Rafifa"],
+  ["banat", "7", "262707026", "Raihana Yasmina Rahman"],
+  ["banat", "7", "262707027", "Raihanah Hanin"],
+  ["banat", "7", "262707028", "Raihanna Navy Khafiya"],
+  ["banat", "7", "262707029", "Rayna Shafiqa Almahyra"],
+  ["banat", "7", "262707030", "Rayya Viro Azzahra"],
+  ["banat", "7", "262707031", "Shafina Lucky Adeeba"],
+  ["banat", "7", "262707032", "Shafiyyah"],
+  ["banat", "7", "262707033", "Shafiyyah Najib"],
+  ["banat", "7", "262707034", "Shaqeena Taqiyyah Siregar"],
+  ["banat", "7", "262707035", "Siti Mutiah Ratu Setiawan"],
+  ["banin", "8", "252607001", "Abdurrohman"],
+  ["banin", "8", "252607002", "Agha Sebastian Dhuha"],
+  ["banin", "8", "252607003", "Alandra Raihan Syazani"],
+  ["banin", "8", "252607004", "Altadira Mohammed El Fatih"],
+  ["banin", "8", "252607005", "Arkananta Putra Iriawan"],
+  ["banin", "8", "252607006", "Arrafi Zaidan Qawiyyu"],
+  ["banin", "8", "252607007", "Arsya Athalah Haki"],
+  ["banin", "8", "252607008", "Baihaqi Safaraz"],
+  ["banin", "8", "252607009", "Fahri Afif Ihsanuddin"],
+  ["banin", "8", "252607010", "Galang Nareswara Putra G"],
+  ["banin", "8", "252607011", "Gaza Syauqi Firdaus"],
+  ["banin", "8", "252607012", "Habibie Alfarizqi"],
+  ["banin", "8", "252607013", "Hasan Faiq M. Hutasoit"],
+  ["banin", "8", "252607014", "Hasby Arif Al Ghifari"],
+  ["banin", "8", "252607015", "Kazhafran Al Fatih Milono"],
+  ["banin", "8", "252607016", "M.Serhan Ar Rasyid"],
+  ["banin", "8", "252607017", "Rafaza Aydin Nadivky"],
+  ["banin", "8", "252607018", "M. Alfath Athaya Riyanto"],
+  ["banin", "8", "252607019", "M. Andra Romansyah"],
+  ["banin", "8", "252607020", "M. Khalifah Al Farisi"],
+  ["banin", "8", "252607021", "M. Naufal Al Fakhri"],
+  ["banin", "8", "252607022", "Mischa Alvaro Nata Kunthar"],
+  ["banin", "8", "252607023", "Muhammad El Azzam A"],
+  ["banin", "8", "252607024", "Naufal Mu'min Billah"],
+  ["banin", "8", "252607025", "Raindra Alkhalifi Pratama"],
+  ["banin", "8", "252607026", "Rakargalu Damar Panuluh"],
+  ["banin", "8", "252607027", "Umar Fatih Abdurrahman"],
+  ["banin", "8", "252607028", "Zen Firdaus"],
+  ["banat", "8", "252607030", "Adela Zahra Nugroho"],
+  ["banat", "8", "252607031", "Afifah Haniyah"],
+  ["banat", "8", "252607032", "Aisyah Azzaira"],
+  ["banat", "8", "252607034", "Askana Sakhia"],
+  ["banat", "8", "252607036", "Azalea Rasyidatu Naja"],
+  ["banat", "8", "252607039", "Fatimah Azzahra"],
+  ["banat", "8", "252607040", "Fiorenza Aretha Arcobaleno"],
+  ["banat", "8", "252607043", "Hana Nafisah"],
+  ["banat", "8", "252607044", "Hanayumi Nafiiza Aldrin"],
+  ["banat", "8", "252607045", "Jasmina Jinan Izzati Akmal"],
+  ["banat", "8", "252607047", "Khanza Humaira Ariyadi"],
+  ["banat", "8", "252607050", "Matahari Parahita Prameswari"],
+  ["banat", "8", "252607052", "Naema Fikriyyah Humaira"],
+  ["banat", "8", "252607058", "Taalea Raisa Eiliyah"],
+  ["banat", "8", "252607033", "Aqeela Maulidya Arlen"],
+  ["banat", "8", "252607035", "Audrey Zaneta Aini"],
+  ["banat", "8", "252607037", "Azka Raihanah"],
+  ["banat", "8", "252607038", "Fakhirah Shakila Dini H"],
+  ["banat", "8", "252607041", "Ghassani Atqiya Zalfa A"],
+  ["banat", "8", "252607042", "Hafidzah Qotrunnada D.K"],
+  ["banat", "8", "252607046", "Khaeria Namia Zahrana"],
+  ["banat", "8", "252607048", "Khayyira Naila Aisha"],
+  ["banat", "8", "252607049", "Levinka Ayla Rahmadita"],
+  ["banat", "8", "252607051", "Naima Ashadya Zaida"],
+  ["banat", "8", "252607053", "Nabila Az-Zahra"],
+  ["banat", "8", "252607055", "Natasha Kirei Samita"],
+  ["banat", "8", "252607056", "Rania Ranaa Kurniawan"],
+  ["banat", "8", "252607057", "Syakira Rahmadita Sijabat"],
+  ["banat", "8", "252607059", "Violetha Ozora Himmatana"],
+  ["banat", "9", "242507001", "Alika Imtinan Diassyafahya"],
+  ["banat", "9", "242507011", "Athifah Mumtazah"],
+  ["banat", "9", "242507002", "Athiyyah Shofi Muthmainnah"],
+  ["banat", "9", "242507003", "Balqis Zahra Hanifah"],
+  ["banat", "9", "252607060", "Damia Khairina Alesha"],
+  ["banat", "9", "252607061", "Delisha Halwa Tabina"],
+  ["banat", "9", "242501010", "Kamilia Jaudah Tsuraya"],
+  ["banat", "9", "242507005", "Mahira Anezka Mulyawan"],
+  ["banat", "9", "242507006", "Maiza Rahma"],
+  ["banat", "9", "242507007", "Naura Izzatunnisa"],
+  ["banat", "9", "242501009", "Raihana Nur Azzahra"]
+]; // [grup, kelas, NIS, nama] — dari data_base_siswa_kelas_7_8_dan_9.docx
 const DEFAULT_CREDENTIALS = {
   admin:{ id:"admin", password:"admin123" },
   banin:{ id:"banin", password:"banin123" },
@@ -1625,6 +1730,41 @@ async function addStudent(data){
   render();
   showToast('Santri ditambahkan');
 }
+async function importStudentsFromList(){
+  const norm = x=> String(x||'').toLowerCase().replace(/\s+/g,' ').trim();
+  const byNis = new Map(), byName = new Map();
+  state.students.forEach(s=>{ if(s.nis) byNis.set(String(s.nis).trim(), s); byName.set(s.group+'|'+norm(s.name), s); });
+  const toAdd = [], toUpdate = [];
+  let same = 0;
+  IMPORT_STUDENTS.forEach(([group,kelas,nis,name])=>{
+    const ex = byNis.get(nis) || byName.get(group+'|'+norm(name));
+    if(!ex){ toAdd.push({group,kelas,nis,name}); return; }
+    const need = (!ex.nis || !ex.kelas);
+    if(need) toUpdate.push({ex,kelas,nis}); else same++;
+  });
+  if(toAdd.length===0 && toUpdate.length===0){ showToast('Semua data sudah ada, tidak ada yang perlu diimpor'); return; }
+  const ok = confirm(`Impor data siswa kelas 7–9?\n\n• ${toAdd.length} santri baru akan ditambahkan\n• ${toUpdate.length} santri lama akan dilengkapi NIS/kelasnya\n• ${same} santri sudah lengkap (dilewati)\n\nData yang sudah ada tidak dihapus atau ditimpa.`);
+  if(!ok) return;
+  const backup = state.students;
+  const next = state.students.map(s=>({...s}));
+  toUpdate.forEach(u=>{
+    const t = next.find(s=>s.id===u.ex.id);
+    if(t){ if(!t.nis) t.nis = u.nis; if(!t.kelas) t.kelas = u.kelas; }
+  });
+  toAdd.forEach(a=>{
+    next.push({ id:uid(a.group==='banin'?'b':'g'), name:a.name, group:a.group, nis:a.nis, kelas:a.kelas, hpOrtu:'', tglLahir:'' });
+  });
+  state.students = next;
+  const saved = await storeSet('students', next);
+  if(!saved){
+    state.students = backup;
+    render();
+    showToast('Gagal menyimpan ke server. Periksa koneksi lalu coba lagi.');
+    return;
+  }
+  render();
+  showToast(`Impor selesai: ${toAdd.length} ditambahkan, ${toUpdate.length} dilengkapi`);
+}
 async function deleteStudent(id){
   state.students = state.students.filter(s=>s.id!==id);
   await storeSet('students', state.students);
@@ -1935,6 +2075,7 @@ function renderAdminStudents(){
       <input type="text" id="newStudentHpOrtu" placeholder="mis. 08123456789">
     </div>
     <button class="btn btn-primary btn-block" id="addStudentBtn">Tambah Santri</button>
+    <button class="btn btn-ghost btn-block" id="importStudentsBtn" style="margin-top:8px;">Impor data siswa kelas 7–9</button>
   </div>
   ${groups.map(([g,label])=>{
     const list = studentsByGroup(g);
@@ -2535,6 +2676,7 @@ function attachAdminEvents(){
       hpOrtu: document.getElementById('newStudentHpOrtu').value
     });
     document.getElementById('addStudentBtn').onclick = doAdd;
+    document.getElementById('importStudentsBtn').onclick = importStudentsFromList;
     document.getElementById('newStudentName').addEventListener('keydown', e=>{ if(e.key==='Enter') doAdd(); });
     document.querySelectorAll('[data-del-student]').forEach(el=>{ el.onclick = ()=> deleteStudent(el.dataset.delStudent); });
     document.querySelectorAll('[data-reset-progress]').forEach(el=>{
